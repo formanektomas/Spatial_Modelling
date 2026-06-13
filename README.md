@@ -19,18 +19,18 @@ University of Economics, Prague
 
 ### Block 1: Geodata: visualization and data wrangling
 
-    + [https://ruettenauer.github.io/SICSS-Spatial/index.html](https://ruettenauer.github.io/SICSS-Spatial/index.html)
++ [https://ruettenauer.github.io/SICSS-Spatial/index.html](https://ruettenauer.github.io/SICSS-Spatial/index.html)
 
 **Spatial geometries (sf objects)**  
 + Spatial objects, projections (coordinate reference systems), visualization (maps, choropleths)
 + Subsetting spatial data, distances, intersections, buffers, and other geometry-related operations
-    + [https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html)
+    + [https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html)  
 
 **Raster data**  
 + Remote sensing: satellite imaging and other raster data (formats, layers)  
 + Raster data wrangling with `{terra}` package  
 + Raster-vector interactions  
-    + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector)
+    + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector)  
 
 **Graph represeentations of spatial data**  
 + Creating map-based graphs (connectivity, distance-based)    
@@ -71,13 +71,9 @@ University of Economics, Prague
 
 ### Block 4: Case studies and applications  
 
-    + [Transportation](https://r.geocompx.org/transport)
-    + [Geomarketing](https://r.geocompx.org/location)
-    + [Ecology](https://r.geocompx.org/eco)
-
-
-
-
++ [Transportation](https://r.geocompx.org/transport)
++ [Geomarketing](https://r.geocompx.org/location)
++ [Ecology](https://r.geocompx.org/eco)   
 
 
 [Homepage](https://formanektomas.github.io/Spatial_Modelling/)
