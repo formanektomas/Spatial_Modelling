@@ -1,5 +1,5 @@
-# Spatial_Modelling
-Materials for the course 4EK662 / 4EK462
+# Spatial Modelling (4EK662)  
+# Prostorové modely (4EK462)  
 
 
 --- 
