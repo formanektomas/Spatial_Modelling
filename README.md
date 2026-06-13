@@ -33,11 +33,13 @@ University of Economics, Prague
     + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector){:target="_blank"}  
 
 **Graph represeentations of spatial data**  
-+ Creating map-based graphs (connectivity, distance-based)    
-+ Transportation-related applications  
-+ Urbanistic applications (space syntax analysis)   
++ Creating map-based graphs (connectivity, distance-based)   
 + Centrality indices: node/edge importance  
 
+**Case studies and applications**   
++ Transportation-related applications  
++ Urbanistic applications (space syntax analysis)   
++ [Ecology](https://r.geocompx.org/eco){:target="_blank"}   
 
 --- 
 
@@ -49,6 +51,8 @@ University of Economics, Prague
 + Spatial clustering, local indicators of spatial association (LISA)  
 + Spatial interpolation, krigging
 
+**Case studies and applications**  
++ [Lake Rangsdorf](https://www.geo.fu-berlin.de/en/v/soga-py/Advanced-statistics/Spatial-Interpolation/Data-sets-used/Lake-Rangsdorf/index.html)
 
 --- 
 
@@ -66,6 +70,8 @@ University of Economics, Prague
 + Dynamic panel data models
     + [https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html){:target="_blank"}
 
+**Case studies and applications**  
++ [https://rpubs.com/quarcs-lab/tutorial-gwr1](https://rpubs.com/quarcs-lab/tutorial-gwr1){:target="_blank"}  
 
 --- 
 
