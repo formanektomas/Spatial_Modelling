@@ -35,6 +35,7 @@ University of Economics, Prague
 **Graph represeentations of spatial data**  
 + Creating map-based graphs (connectivity, distance-based)   
 + Centrality indices: node/edge importance  
++ [https://r-spatial.org/r/2019/09/26/spatial-networks.html](https://r-spatial.org/r/2019/09/26/spatial-networks.html){:target="_blank"}  
 
 **Case studies and applications**   
 + Transportation-related applications  
