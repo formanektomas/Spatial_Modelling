@@ -19,7 +19,7 @@ layout: default
 
 + [Wickham et al.: R for Data Science](https://r4ds.hadley.nz/){:target="_blank"}   
 
-+ [James et al.: An Introduction to Statistical Learning](https://www.statlearning.com/)){:target="_blank"}  
++ [James et al.: An Introduction to Statistical Learning](https://www.statlearning.com/){:target="_blank"}  
 + [An Introduction to Statistical Learning on-line course - videos](https://www.youtube.com/playlist?list=PLoROMvodv4rOzrYsAxzQyHb8n_RWNuS1e){:target="_blank"}   
 
 --- 
