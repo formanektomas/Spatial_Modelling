@@ -13,7 +13,12 @@ University of Economics, Prague
 
 --- 
 
-### Requirements and classification  
+## Basic information
+
++ [Course classification](https://github.com/formanektomas/Spatial_Modelling/CourseClassification.html)  
+
++ [Literature and supporting materials for the course](https://formanektomas.github.io/Spatial_Modelling/LiteratureResources.html)  
+
 
 --- 
 
