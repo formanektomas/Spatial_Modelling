@@ -1,0 +1,147 @@
+---
+title: "Block 1 R code"
+format: html
+---
+
+## Block 1 - presentation: `R` code
+
+```{r}
+#| warning: false
+#| message: false
+library(lwgeom)
+library(tidyverse)
+library(sf)
+library(s2)
+library(mapview)
+library(rnaturalearth)
+```
+
+## Creating a point geometry in `R`
+
++ approximate location of room NB432
+
+```{r}
+p <- sf::st_as_sfc("POINT(14.442408 50.083300)", crs = 4326)
+p[[1]]
+p
+mapview::mapview(p)
+```
+
+
+---
+
+## Polygon projection (Polar region)
+
+```{r}
+ne <- countries110 %>% 
+  st_as_sf() %>%
+  st_geometry() %>% 
+  st_transform("+proj=eqc")
+plot(ne, axes = TRUE)
+
+# sfc object: polygon is created
+# note how the first and last elements are identical 
+pol = st_as_sfc("POLYGON((-150 -65, 0 -62, 120 -78, -150 -65))", crs = 4326)
+pol
+pol <- st_transform(pol,"+proj=eqc")
+# sfc object: point (South pole) is created
+pole = st_as_sfc("POINT(0 -90)", crs = 4326) %>% 
+  st_transform("+proj=eqc")
+
+# does the polygon contain South pole?
+st_intersects(pole,pol)
+
+
+plot(ne, axes = TRUE, reset=F)
+plot(pol, add=T, col = "red")
+
+
+world_antarctic <- countries110 |>
+  dplyr::filter(ADMIN == "Antarctica") |>
+  st_geometry() |>
+  st_transform("+proj=eqc")  
+
+# Orthographic view centered on South Pole
+ortho <- "+proj=ortho +lat_0=-90 +lon_0=0"
+
+plot(
+  st_transform(world_antarctic, ortho),
+  xlim = c(-3e6, 3e6),
+  ylim = c(-3e6, 3e6),
+  col = "white",
+  border = "black"
+)
+
+plot(
+  st_transform(
+    st_segmentize(
+      pol,
+      units::set_units(20, km)
+    ),
+    ortho
+  ),
+  add = TRUE,
+  col = "red",
+  border = "black"
+)
+
+```
+
+---
+
+## Seven basic vector-based map elements
+
+
+```{r}
+# 1 point
+p <- st_point(0:1)
+plot(p, pch = 16)
+title("point")
+box(col = 'grey')
+
+# 2 multipoint
+mp <- st_multipoint(rbind(c(1,1), c(2, 2), c(4, 1), c(2, 3), c(1,4)))
+plot(mp, pch = 16)
+title("multipoint")
+box(col = 'grey')
+
+# 3 linestring
+ls <- st_linestring(rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)))
+plot(ls, lwd = 2)
+title("linestring")
+box(col = 'grey')
+
+# 4 multilinestring
+mls <- st_multilinestring(list(
+  rbind(c(1,1), c(5,5), c(5, 6), c(4, 6), c(3, 4), c(2, 3)),
+  rbind(c(3,0), c(4,1), c(2,1))))
+plot(mls, lwd = 2)
+title("multilinestring")
+box(col = 'grey')
+
+# 5 polygon
+po <- st_polygon(list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+    rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))))
+plot(po, border = 'black', col = '#ff8888', lwd = 2)
+title("polygon")
+box(col = 'grey')
+
+# 6 multipolygon
+mpo <- st_multipolygon(list(
+    list(rbind(c(2,1), c(3,1), c(5,2), c(6,3), c(5,3), c(4,4), c(3,4), c(1,3), c(2,1)),
+        rbind(c(2,2), c(3,3), c(4,3), c(4,2), c(2,2))),
+    list(rbind(c(3,7), c(4,7), c(5,8), c(3,9), c(2,8), c(3,7)))))
+plot(mpo, border = 'black', col = '#ff8888', lwd = 2)
+title("multipolygon")
+box(col = 'grey')
+
+# 7 geometrycollection
+gc <- st_geometrycollection(list(po, ls + c(0,5), st_point(c(2,5)), st_point(c(5,4))))
+plot(gc, border = 'black', col = '#ff6666', pch = 16, lwd = 2)
+title("geometrycollection")
+box(col = 'grey')
+
+```
+
+--- 
+
