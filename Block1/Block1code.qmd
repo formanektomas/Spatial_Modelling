@@ -8,6 +8,8 @@ format: html
 ```{r}
 #| warning: false
 #| message: false
+library(eurostat)
+library(ggplot2)
 library(lwgeom)
 library(tidyverse)
 library(sf)
@@ -18,7 +20,7 @@ library(rnaturalearth)
 
 ## Creating a point geometry in `R`
 
-+ approximate location of room NB432
+- approximate location of room NB432
 
 ```{r}
 p <- sf::st_as_sfc("POINT(14.442408 50.083300)", crs = 4326)
@@ -27,8 +29,7 @@ p
 mapview::mapview(p)
 ```
 
-
----
+------------------------------------------------------------------------
 
 ## Polygon projection (Polar region)
 
@@ -87,10 +88,81 @@ plot(
 
 ```
 
----
+Another way to interpret & visualize the polygon: instead of re-projecting the original shape (focusing on the border-lines of the original object) to polar coordinates, we can simply take the three vertices (of a triangle) and connect them with a *new* shape (that actually covers the South Pole). 
+
+```{r}
+pol2 = st_as_sfc("POLYGON((-150 -65, 0 -62, 120 -78, -150 -65))", crs = 4326)
+
+
+plot(
+  st_transform(world_antarctic, ortho),
+  xlim = c(-3e6, 3e6),
+  ylim = c(-3e6, 3e6),
+  col = "white",
+  border = "black"
+)
+
+plot(
+  st_transform(
+    st_segmentize(
+      pol,
+      units::set_units(20, km)
+    ),
+    ortho
+  ),
+  add = TRUE,
+  col = "red",
+  border = "black"
+)
+
+plot(
+  st_transform(pol2,ortho),
+  add = TRUE,
+  col = "darkgreen",
+  border = "black"
+)
+
+plot(
+  st_transform(pole,ortho),
+  add = TRUE,
+  col = "yellow",
+  border = "yellow"
+)
+```
+------------------------------------------------------------------------
+## Germany in three different projections
+
+```{r}
+allNUTSmap <- eurostat::get_eurostat_geospatial(year="2013")
+# Example of map for Germany - NUTS 2, WGS84
+Germany_NUTS2 <- allNUTSmap %>%   
+  dplyr::filter(LEVL_CODE == 2 & CNTR_CODE %in% ("DE")) 
+ggplot() + 
+  geom_sf(data = Germany_NUTS2) +
+  theme_bw()
+#
+# LAEA geometry
+laea = st_crs("+proj=laea +lat_0=51 +lon_0=11") 
+GermanyLAEA <- st_transform(Germany_NUTS2,laea)
+ggplot() + 
+  geom_sf(data = GermanyLAEA)+
+  theme_bw()
+#
+# LAEA geometry optimized for Iceland
+GermanyLAEAIceland <- st_transform(Germany_NUTS2,crs=9947)
+ggplot() + 
+  geom_sf(data = GermanyLAEAIceland)+
+  theme_bw()
+```
+
+
+
+
+
+
+------------------------------------------------------------------------
 
 ## Seven basic vector-based map elements
-
 
 ```{r}
 # 1 point
@@ -143,5 +215,4 @@ box(col = 'grey')
 
 ```
 
---- 
-
+------------------------------------------------------------------------
