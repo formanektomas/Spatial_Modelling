@@ -8,8 +8,11 @@ format: html
 ```{r}
 #| warning: false
 #| message: false
+library(RCzechia)
+library(terra)
 library(eurostat)
 library(ggplot2)
+library(RColorBrewer)
 library(lwgeom)
 library(tidyverse)
 library(sf)
@@ -17,6 +20,130 @@ library(s2)
 library(mapview)
 library(rnaturalearth)
 ```
+
+------------------------------------------------------------------------
+
+## Three types of spatial data (rasters, vectors/polygons, spatial graphs)
+
+```{r}
+Elevation <- RCzechia::vyskopis(format="actual")
+CZbound <- RCzechia::republika(resolution = "low")
+Elevation <- terra::mask(Elevation,CZbound)
+plot(Elevation)
+
+CZcounties <- RCzechia::okresy(resolution = "low")
+plot(CZcounties[,1])
+
+CZrailways <- RCzechia::zeleznice()
+CZrailways$ELEKTRIFIKACE <-as.factor(CZrailways$ELEKTRIFIKACE)
+plot(CZrailways["ELEKTRIFIKACE"],lwd=2,reset=F)
+plot(st_geometry(CZbound),add=T)
+
+```
+
+
+------------------------------------------------------------------------
+
+## Unemployment in Central Europe: panel data
+
+```{r}
+
+ce_countries <- c("AT", "CZ", "DE", "HU", "PL", "SK")
+years_keep   <- c(2016, 2019)
+
+# NUTS2 geometries, GISCO 2010, 1:60M scale
+nuts2 <- eurostat::get_eurostat_geospatial(
+  nuts_level   = 2,
+  year         = 2016,
+  resolution   = "60",
+  output_class = "sf",
+  crs          = "4326"
+) |>
+  st_make_valid() |>
+  dplyr::filter(CNTR_CODE %in% ce_countries)
+# Country boundaries, NUTS0
+nuts0 <- eurostat::get_eurostat_geospatial(
+  nuts_level   = 0,
+  year         = 2016,
+  resolution   = "60",
+  output_class = "sf",
+  crs          = "4326"
+) |>
+  st_make_valid() |>
+  dplyr::filter(CNTR_CODE %in% ce_countries)
+
+
+# Eurostat unemployment rate
+# Dataset: lfst_r_lfu3rt
+# sex = total
+# age = 20-64
+# time = 2005 and 2012
+# ------------------------------------------------------------
+unemp <- eurostat::get_eurostat(
+  id          = "lfst_r_lfu3rt",
+  time_format = "num",
+  type        = "code")
+
+unemp <- unemp %>% 
+  dplyr::filter(sex  == "T", age  == "Y20-64", isced11 == "TOTAL",
+                TIME_PERIOD %in% years_keep)
+
+
+
+# Join unemployment data to NUTS2 polygons
+map_data <- nuts2 |>
+  left_join(
+    unemp,
+    by = c("NUTS_ID" = "geo")
+  ) |>
+  mutate(
+    # Small enclosed city regions should be drawn last.
+    # This replaces the old TopL logic for Berlin, Bremen, Prague, Vienna.
+    top_layer = if_else(NUTS_ID %in% c("DE30", "DE50", "CZ01", "AT13"), 1L, 0L)
+  ) |>
+  arrange(top_layer)
+
+
+# Horizontal two-panel plot
+p_horizontal <- ggplot() +
+  geom_sf(
+    data = map_data,
+    aes(fill = values),
+    color = "grey50",
+    linewidth = 0.1
+  ) +
+  geom_sf(
+    data = nuts0,
+    fill = NA,
+    color = "black",
+    linewidth = 0.4
+  ) +
+  scale_fill_gradientn(
+    name = "% rate of\nunemp.",
+    colours = brewer.pal(9, "Reds"),
+    na.value = "white"
+  ) +
+  # coord_sf(crs = st_crs(4326)) +
+  facet_wrap(~ TIME_PERIOD, nrow = 1) +
+  labs(
+    title = "Unemployment rate, years 2016 and 2019"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey90", linewidth = 0.2),
+    # strip.text = element_text(face = "bold"),
+    legend.position = "right",
+    panel.spacing.x = unit(1, "cm")
+  )
+
+p_horizontal
+```
+
+
+
+
+------------------------------------------------------------------------
 
 ## Creating a point geometry in `R`
 
@@ -155,9 +282,29 @@ ggplot() +
   theme_bw()
 ```
 
+------------------------------------------------------------------------
+
+## Unemployment Germany: choropleth/infomap
+
+```{r}
+
+# example continued from CE panel data (map_data)
+
+# Join unemployment data to NUTS2 polygons
+DE <- map_data %>% 
+  dplyr::filter(CNTR_CODE == "DE", TIME_PERIOD == 2016) %>% 
+  dplyr::select(geo,values) # geometry is not lost, DE has 3 columns
 
 
-
+# Horizontal two-panel plot
+ggplot(DE) +
+  geom_sf(aes(fill = values))+
+  scale_fill_gradient(
+    name = "% rate of\nunemp.",
+    low = "white",
+    high = "red")+
+  theme_bw()
+```
 
 
 ------------------------------------------------------------------------
