@@ -1,0 +1,369 @@
+---
+title: "Block 1 R code"
+format: html
+---
+
+## Block 1 - presentation: `R` code
+
+```{r}
+#| warning: false
+#| message: false
+library(giscoR)
+library(tidygeocoder)
+library(RCzechia)
+library(terra)
+library(eurostat)
+library(ggplot2)
+library(RColorBrewer)
+library(lwgeom)
+library(tidyverse)
+library(dplyr)
+library(sf)
+library(s2)
+library(mapview)
+library(rnaturalearth)
+```
+
+------------------------------------------------------------------------
+
+## Three types of spatial data (rasters, vectors/polygons, spatial graphs)
+
+```{r}
+Elevation <- RCzechia::vyskopis(format="actual")
+CZbound <- RCzechia::republika(resolution = "low")
+Elevation <- terra::mask(Elevation,CZbound)
+plot(Elevation)
+
+CZcounties <- RCzechia::okresy(resolution = "low")
+plot(CZcounties[,1])
+
+CZrailways <- RCzechia::zeleznice()
+CZrailways$ELEKTRIFIKACE <-as.factor(CZrailways$ELEKTRIFIKACE)
+plot(CZrailways["ELEKTRIFIKACE"],lwd=2,reset=F)
+plot(st_geometry(CZbound),add=T)
+
+```
+
+
+------------------------------------------------------------------------
+
+## Unemployment in Central Europe: panel data
+
+```{r}
+
+ce_countries <- c("AT", "CZ", "DE", "HU", "PL", "SK")
+years_keep   <- c(2016, 2019)
+
+# NUTS2 geometries, GISCO 2010, 1:60M scale
+nuts2 <- eurostat::get_eurostat_geospatial(
+  nuts_level   = 2,
+  year         = 2016,
+  resolution   = "60",
+  output_class = "sf",
+  crs          = "4326"
+) |>
+  st_make_valid() |>
+  dplyr::filter(CNTR_CODE %in% ce_countries)
+# Country boundaries, NUTS0
+nuts0 <- eurostat::get_eurostat_geospatial(
+  nuts_level   = 0,
+  year         = 2016,
+  resolution   = "60",
+  output_class = "sf",
+  crs          = "4326"
+) |>
+  st_make_valid() |>
+  dplyr::filter(CNTR_CODE %in% ce_countries)
+
+
+# Eurostat unemployment rate
+# Dataset: lfst_r_lfu3rt
+# sex = total
+# age = 20-64
+# time = 2005 and 2012
+# ------------------------------------------------------------
+unemp <- eurostat::get_eurostat(
+  id          = "lfst_r_lfu3rt",
+  time_format = "num",
+  type        = "code")
+
+unemp <- unemp %>% 
+  dplyr::filter(sex  == "T", age  == "Y20-64", isced11 == "TOTAL",
+                TIME_PERIOD %in% years_keep)
+
+
+
+# Join unemployment data to NUTS2 polygons
+map_data <- nuts2 |>
+  left_join(
+    unemp,
+    by = c("NUTS_ID" = "geo")
+  ) |>
+  mutate(
+    # Small enclosed city regions should be drawn last.
+    # This replaces the old TopL logic for Berlin, Bremen, Prague, Vienna.
+    top_layer = if_else(NUTS_ID %in% c("DE30", "DE50", "CZ01", "AT13"), 1L, 0L)
+  ) |>
+  arrange(top_layer)
+
+
+# Horizontal two-panel plot
+p_horizontal <- ggplot() +
+  geom_sf(
+    data = map_data,
+    aes(fill = values),
+    color = "grey50",
+    linewidth = 0.1
+  ) +
+  geom_sf(
+    data = nuts0,
+    fill = NA,
+    color = "black",
+    linewidth = 0.4
+  ) +
+  scale_fill_gradientn(
+    name = "% rate of\nunemp.",
+    colours = brewer.pal(9, "Reds"),
+    na.value = "white"
+  ) +
+  # coord_sf(crs = st_crs(4326)) +
+  facet_wrap(~ TIME_PERIOD, nrow = 1) +
+  labs(
+    title = "Unemployment rate, years 2016 and 2019"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    panel.grid.major = element_line(color = "grey90", linewidth = 0.2),
+    # strip.text = element_text(face = "bold"),
+    legend.position = "right",
+    panel.spacing.x = unit(1, "cm")
+  )
+
+p_horizontal
+```
+
+
+
+
+------------------------------------------------------------------------
+
+## Creating a point geometry in `R`
+
+- approximate location of room NB432
+
+```{r}
+p <- sf::st_as_sfc("POINT(14.442408 50.083300)", crs = 4326)
+p[[1]]
+p
+mapview::mapview(p)
+```
+
+------------------------------------------------------------------------
+
+## Polygon projection (Polar region)
+
+```{r}
+ne <- countries110 %>% 
+  st_as_sf() %>%
+  st_geometry() %>% 
+  st_transform("+proj=eqc")
+plot(ne, axes = TRUE)
+
+# sfc object: polygon is created
+# note how the first and last elements are identical 
+pol = st_as_sfc("POLYGON((-150 -65, 0 -62, 120 -78, -150 -65))", crs = 4326)
+pol
+pol <- st_transform(pol,"+proj=eqc")
+# sfc object: point (South pole) is created
+pole = st_as_sfc("POINT(0 -90)", crs = 4326) %>% 
+  st_transform("+proj=eqc")
+
+# does the polygon contain South pole?
+st_intersects(pole,pol)
+
+
+plot(ne, axes = TRUE, reset=F)
+plot(pol, add=T, col = "red")
+
+
+world_antarctic <- countries110 |>
+  dplyr::filter(ADMIN == "Antarctica") |>
+  st_geometry() |>
+  st_transform("+proj=eqc")  
+
+# Orthographic view centered on South Pole
+ortho <- "+proj=ortho +lat_0=-90 +lon_0=0"
+
+plot(
+  st_transform(world_antarctic, ortho),
+  xlim = c(-3e6, 3e6),
+  ylim = c(-3e6, 3e6),
+  col = "white",
+  border = "black"
+)
+
+plot(
+  st_transform(
+    st_segmentize(
+      pol,
+      units::set_units(20, km)
+    ),
+    ortho
+  ),
+  add = TRUE,
+  col = "red",
+  border = "black"
+)
+
+```
+
+Another way to interpret & visualize the polygon: instead of re-projecting the original shape (focusing on the border-lines of the original object) to polar coordinates, we can simply take the three vertices (of a triangle) and connect them with a *new* shape (that actually covers the South Pole). 
+
+```{r}
+pol2 = sf::st_as_sfc("POLYGON((-150 -65, 0 -62, 120 -78, -150 -65))", crs = 4326)
+
+
+plot(
+  sf::st_transform(world_antarctic, ortho),
+  xlim = c(-3e6, 3e6),
+  ylim = c(-3e6, 3e6),
+  col = "white",
+  border = "black"
+)
+
+plot(
+  sf::st_transform(
+    st_segmentize(
+      pol,
+      units::set_units(20, km)
+    ),
+    ortho
+  ),
+  add = TRUE,
+  col = "red",
+  border = "black"
+)
+
+plot(
+  sf::st_transform(pol2,ortho),
+  add = TRUE,
+  col = "darkgreen",
+  border = "black"
+)
+
+plot(
+  sf::st_transform(pole,ortho),
+  add = TRUE,
+  col = "yellow",
+  border = "yellow"
+)
+```
+
+Adapted from [https://r-spatial.org/r/2020/06/17/s2.html](https://r-spatial.org/r/2020/06/17/s2.html)
+
+------------------------------------------------------------------------
+
+## Germany in three different projections  
+
+```{r}
+allNUTSmap <- eurostat::get_eurostat_geospatial(year="2013")
+# Example of map for Germany - NUTS 2, WGS84
+Germany_NUTS2 <- allNUTSmap %>%   
+  dplyr::filter(LEVL_CODE == 2 & CNTR_CODE == "DE") 
+g1 <- ggplot() + 
+  geom_sf(data = Germany_NUTS2) +
+  theme_bw()
+g1
+#
+# LAEA geometry
+laea <- st_crs("+proj=laea +lat_0=51 +lon_0=11") 
+GermanyLAEA <- sf::st_transform(Germany_NUTS2,laea)
+g2 <- ggplot() + 
+  geom_sf(data = GermanyLAEA)+
+  theme_bw()
+g2
+#
+# LAEA geometry optimized for Iceland
+GermanyLAEAIceland <- sf::st_transform(Germany_NUTS2,crs=9947)
+g3 <- ggplot() + 
+  geom_sf(data = GermanyLAEAIceland)+
+  theme_bw()
+g3
+```
+
+------------------------------------------------------------------------
+
+## Unemployment Germany: choropleth/infomap
+
+```{r}
+
+# example continued from CE panel data (map_data)
+
+# Join unemployment data to NUTS2 polygons
+DE <- map_data %>% 
+  dplyr::filter(CNTR_CODE == "DE", TIME_PERIOD == 2016) %>% 
+  dplyr::select(geo,values) # geometry is not lost, DE has 3 columns
+
+
+# Horizontal two-panel plot
+g4 <- ggplot(DE) +
+  geom_sf(aes(fill = values))+
+  scale_fill_gradient(
+    name = "% rate of\nunemp.",
+    low = "white",
+    high = "red")+
+  theme_bw()
+g4
+```
+
+
+------------------------------------------------------------------------
+
+## Geocoding
+
+```{r}
+addresses <- c(
+  "Winston Churchill Square, Prague, Czechia",
+  "nám. W. Churchilla, Prague, Czechia",
+  "Václavské náměstí, Prague, Czechia",
+  "Náměstí Míru, Prague, Czechia")
+
+locs <- tidygeocoder::geo(address = addresses) |> 
+  as.data.frame()
+print(locs) 
+
+locs_sf <- locs |> 
+  dplyr::filter(!is.na(long), !is.na(lat)) |> 
+  # st_as_sf does not work with NAs
+  sf::st_as_sf(coords = c("long", "lat"),
+                    crs = 4326, remove = FALSE)
+
+m <- mapview::mapview(
+  locs_sf,
+  col.regions = "red",
+  cex = 8,
+  layer.name = "Geocoded address"
+)
+m
+
+# Reverse geocoding: coordinates >> address
+
+
+coords <- data.frame(
+  name = c("VSE Prague", "National Museum"),
+  lat  = c(50.08414, 50.07962),
+  long = c(14.44110, 14.43088)
+)
+
+coords_rev <- coords |>
+  tidygeocoder::reverse_geocode(
+    lat = lat,
+    long = long,
+    method = "osm",
+    address = address
+  )
+
+coords_rev
+
+```
