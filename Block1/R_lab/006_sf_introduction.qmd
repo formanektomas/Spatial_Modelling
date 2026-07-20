@@ -31,9 +31,31 @@ library(dplyr)
 library(ggplot2)
 library(giscoR)
 library(eurostat)
+library(mapview)
 ```
 
 ---  
+
+## Create sf objects from foreign data formats
+
+```{r}
+# Regular data frame
+cities <- data.frame(
+  city = c("Prague","Brno","Ostrava","Plzen","Olomouc"),
+  lon = c(14.4378,16.6068,18.2625,13.3776,17.2509),
+  lat = c(50.0755,49.1951,49.8209,49.7384,49.5938))
+cities
+
+# Convert to an sf object:
+cities_sf <- st_as_sf(  cities,  coords = c("lon", "lat"),  crs = 4326)
+cities_sf
+
+# Display with mapiview
+mapview(cities_sf,zcol = "city",label = cities_sf$city,cex = 8)
+```
+
+
+---
 
 
 ## Working with spatial data: `sf` and `tidyverse` integration  
