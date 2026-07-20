@@ -1,0 +1,114 @@
+---
+title: "Knitr and R basics for the course 4EK662 / 4EK462 "
+author: " "
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+# Goals for this script:
+
+* R Markdown - quick review of the `.Rmd` format and functionality
+* R basics for the course 4EK662 / 4EK462: outline
+
+
+---
+
+## R Markdown - quick review 
+
+> This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+For a simple cheatsheet, go to: `RStudio: Help > Cheatsheets > R Markdown Cheat Sheet`  
+
+When you *click* the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+**Target formats**
+
+- html  
+- MS Word
+- pdf output requires additional SW (MikTeX)
+
+
+Formatting in Rmd files:  
+
+* Two empty spaces at the end of a line force a line return  
+* Lists are insterted using `*`
+* Horizontal lines `---`
+* Headings are produced using `#`, `##`, etc. 
+* Math expression are inserted through $\LaTeX$ syntax: `$\hat{\beta}_1$` translates to $\hat{\beta}_1$, `$\sigma_i^2$` becomes $\sigma_i^2$, etc.
+
+
+
+---
+
+# Heading 1
+is produced using `# Heading 1`,  
+
+## Heading 2  
+is produced using `## Heading 2`, etc.  
+
+### Heading 3  
+
+-----
+
+#### `R` code \& output can be inserted using code "chunks":  
+
+**R-based elements:**
+
+```{r}
+library(sf)
+#North Carolina (USA) sample dataset from the {sf} package
+nc <- st_read(system.file("shape/nc.shp", package="sf"))
+head(nc)
+```
+
+
+```{r}
+summary(nc)
+```
+
+Additional information on the data:
+```{r, echo=T}
+str(nc)
+```
+
+
+You can also embed plots, for example:
+
+```{r, echo=T}
+plot(st_geometry(nc))
+# plot just the first line/country:
+plot(st_geometry(nc[1,]))
+```
+
+Alternatively, you can hide the plot command from the output by using `{r, echo=FALSE}`:
+
+```{r, echo=FALSE}
+plot(st_geometry(nc))
+```
+
+___    
+   
+
+
+## R essentials for the course:
+
+Required/assumed `R` knowledge and skills (and references to self-study materials, if necessary)
+
+1. Basic `R` syntax, working with common objects such as vectors, dataframes, matrices. Referencing styles: `[,]` and `$`. Reading and writing `csv` and similar data formats. Basic linear regression in `R` & statistical inference.  
+    + You can use any text or course located on [Stack Overflow for R](https://stackoverflow.com/tags/r/info)  
+    
+2. Basic knowledge of data plotting using `graphics` and `ggplot2` packages.  
+    + [ggplot2 web page](https://ggplot2.tidyverse.org/)  
+    
+3. Basic knowledge of `tidyverse`-based data wrangling, with some focus on the `tidyr` and `dplyr` packages.
+    + [self-study materials for tidyr](https://tidyr.tidyverse.org/reference/tidyr-package.html)  
+    + [self-study materials for dplyr](https://dplyr.tidyverse.org/)  
+
+--- 
+
+    
+
+

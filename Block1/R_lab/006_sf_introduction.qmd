@@ -1,0 +1,138 @@
+---
+title: "sf"
+format: html
+---
+
+# Goals for this script:
+
+* Quick introduction to the `sf`  package  [ https://r-spatial.github.io/sf/](https://r-spatial.github.io/sf/)  
+* `st_as_sf()` converts foreign object to an sf object  
+* `st_read()`  reads simple features or layers from file or database  
+* `st_write()` writes simple features object to file or database  
+
+
+--- 
+
+## `sf`
+
+Simple features (sf) refers to a formal standard `(ISO 19125-1:2004)` that describes how objects in the real world can be represented in computers, with emphasis on the spatial geometry of these objects. It also describes how such objects can be stored in and retrieved from databases, and which geometrical operations should be defined for them. The standard is widely implemented in spatial databases (such as PostGIS), commercial GIS (e.g., ESRI ArcGIS) and forms the vector data basis for libraries such as GDAL.
+
+`sf` provides a standardized way to encode spatial vector data. Binds to:  
+* [GDAL](https://gdal.org/en/stable/) for reading and writing data,   
+* [GEOS](https://libgeos.org/) for geometrical operations,  
+* [PROJ](https://proj.org/en/stable/) for projection conversions and datum transformations, 
+* [s2](https://r-spatial.github.io/s2/) `R` package for spherical geometry operations on ellipsoidal (long/lat) coordinates·  
+
+--- 
+
+```{r}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(giscoR)
+library(eurostat)
+```
+
+---  
+
+
+## Working with spatial data: `sf` and `tidyverse` integration  
+
+```{r}
+# read in data at NUTS2 level
+countries <- c("AT","CZ","DE")
+geosp <- gisco_get_nuts(year = "2021")
+geosp <- geosp |>
+  filter(LEVL_CODE == 2,
+         CNTR_CODE %in% countries) |>
+  dplyr::select(CNTR_CODE,NUTS_ID,NAME_LATN) |> 
+  arrange(NUTS_ID)
+
+# show the sf dataframe
+geosp
+
+# plot the whole dataframe
+plot(st_geometry(geosp))
+
+ggplot() + 
+  geom_sf(data = geosp, aes(fill = CNTR_CODE))+
+  theme(legend.position = "none")
+
+# plot one country only
+geosp |> 
+  filter(CNTR_CODE == "CZ") |> 
+  st_geometry() |> 
+  plot()
+
+# plot one country only (NUTS 0)
+geosp |> 
+  filter(CNTR_CODE == "CZ") |> 
+  summarise() |>
+  plot()
+```
+
+
+--- 
+
+## Reading and writing spatial data files
+
+* Popular spatial file formats  
+
+| Format Name   | File Extension | GDAL Driver      | Description |
+|---------------|----------------|------------------|-------------|
+| GeoPackage    | .gpkg          | GPKG             | Modern SQLite-based format; supports multiple layers and large datasets efficiently. |
+| ESRI Shapefile| .shp           | ESRI Shapefile   | Legacy GIS format; widely supported but has limitations. |
+| GeoJSON       | .geojson       | GeoJSON          | Lightweight JSON-based format used in web mapping applications. |
+
+
+```{r}
+sf::st_write(geosp,"AT_CZ_DE_NUTS2.gpkg",append = FALSE)
+# append = F parameter allows the function to overwrite an already-existing file with the same name in the working directory 
+
+geosp2 <- st_read("AT_CZ_DE_NUTS2.gpkg")
+geosp2
+
+```
+
+--- 
+
+## Combine maps with data, create infomaps/choropleths
+
+* Append High tech sector employment (%) from Eurostat  
+* Plot the data using ggplot2  
+
+```{r}
+emp_ht <- get_eurostat("htec_emp_reg2", time_format = "num") |> 
+  filter(nace_r2=='KIS', sex == "T", unit=='PC_EMP',TIME_PERIOD == 2022) |> 
+  validate_nuts_regions() |> 
+  filter(nchar(geo) == 4) |> 
+  dplyr::select(geo,values)
+colnames(emp_ht) <- c("NUTS_ID","emp_ht")
+
+# left_join, sf must be the first/left, so that the output df is sf-type
+geosp_ht <- geosp |> 
+  left_join(emp_ht, by = "NUTS_ID")
+geosp_ht
+
+# prepare state borders for the main plot
+borders <- geosp_ht |>
+  group_by(CNTR_CODE) |>
+  summarise()
+borders
+
+# Use ggplot2 to produce an infomap
+ggplot() +
+  geom_sf(
+    data = geosp_ht,     # HighTech data
+    aes(fill = emp_ht),
+    color = "grey70",
+    linewidth = 0.1
+  ) +
+  geom_sf(
+    data = borders,     # borders plotted from a different dataframe
+    color = "orange",
+    fill = NA,
+    linewidth = 1
+  )
+
+```  
