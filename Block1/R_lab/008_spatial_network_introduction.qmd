@@ -1,0 +1,250 @@
+---
+title: "igraph sfnetwork"
+format: html
+editor: visual
+---
+
+# Spatial networks/graphs - introduction
+
+## Goals for this script
+
+- Creating a nework/graph from spatial data  
+- Basic operations with graphs  
+- Spatial nework visualization  
+- Packages [igraph](https://r.igraph.org/articles/igraph.html) and [sfnetwork](https://luukvdmeer.github.io/sfnetworks/)
+- **Build a simple network, find and visualize shortest path between two nodes**
+
+```{r}
+#| message: false
+#| warning: false
+
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(sfnetworks)
+library(tidygraph)
+library(igraph)
+library(mapview)
+library(knitr)
+```
+
+------------------------------------------------------------------------
+
+## Build a simplified cycleway network
+
+```{r}
+roxel <- sfnetworks::roxel |>
+  filter(type == "cycleway")
+
+net <- roxel |>
+  as_sfnetwork(
+    directed = FALSE,
+    length_as_weight = TRUE,
+    edges_as_lines = TRUE
+  ) |>
+  convert(to_spatial_smooth) |>
+  mutate(component = group_components(type = "weak")) |>
+  filter(component == 1) |>
+  activate("nodes") |>
+  mutate(
+    node_id = row_number(),
+    vertex_name = paste0("v", node_id)
+  ) |>
+  activate("edges") |>
+  mutate(
+    edge_id = row_number(),
+    dist_m = as.numeric(st_length(geometry)),
+    label = paste0(round(dist_m), " m")
+  )
+
+edges <- net |>
+  activate("edges") |>
+  st_as_sf() |>
+  select(edge_id, name, type, dist_m, geometry) |>
+  mutate(
+    dist_m = as.numeric(dist_m),
+    name = as.character(name),
+    type = as.character(type)
+  )
+
+nodes <- net |>
+  activate("nodes") |>
+  st_as_sf()
+
+roxel # orignial sf object with linestring geometries
+net # simple network, created using: roxel |> as_sfnetwork()
+edges # edges of the network, created using: net |> activate("edges")
+nodes # nodes of the network, created using: net |> activate("nodes")
+```
+
+
+------------------------------------------------------------------------
+
+
+## Display the network (`ggplot2` and `mapview`)
+
+```{r}
+#| warning: FALSE
+#| fig-width: 8
+#| fig-height: 6
+
+
+# ggplot2
+ggplot() +
+  geom_sf(
+    data = edges,
+    aes(color = dist_m, linewidth = dist_m),
+    alpha = 0.85
+  ) +
+  geom_sf(
+    data = nodes,
+    color = "red",
+    size = 2,
+    alpha = 0.8
+  ) +
+  geom_sf_text(
+    data = nodes,
+    aes(label = vertex_name),
+    size = 2.5,
+    check_overlap = TRUE,
+    nudge_y = 0.00003
+  ) +
+  scale_linewidth_continuous(range = c(0.3, 1.8)) +
+  labs(
+    title = "Spatial graph from sfnetworks::roxel",
+    subtitle = "Cycleways in Roxel, Münster, Germany",
+    color = "Edge length (m)",
+    linewidth = "Edge length (m)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+# mapview 
+mapview(edges, zcol = "dist_m", lwd = 3, layer.name = "Edge (m)") +
+  mapview(nodes, col.regions = "red", cex = 5, layer.name = NULL)
+
+```
+
+
+------------------------------------------------------------------------
+
+
+##  Distance matrix
+
+* Matrix of shortest-path distances along the network
+
+```{r}
+g <- igraph::as.igraph(net)
+
+# Edge weights
+w <- igraph::edge_attr(g, "dist_m")
+
+# All-pairs shortest-path distance matrix
+D <- igraph::distances(
+  g,
+  weights = w
+)
+
+# Use vertex names as row and column names
+rownames(D) <- igraph::vertex_attr(g, "vertex_name")
+colnames(D) <- igraph::vertex_attr(g, "vertex_name")
+
+knitr::kable(
+  round(D, 0),
+  caption = "Shortest-path distance matrix among selected vertices, in metres"
+)
+```
+
+
+------------------------------------------------------------------------
+
+
+##  Display shortest path for two selected vertices
+
+
+```{r}
+#| warning: FALSE
+from_vertex <- "v14"
+to_vertex   <- "v4"
+
+from_id <- match(from_vertex, igraph::vertex_attr(g, "vertex_name"))
+to_id   <- match(to_vertex, igraph::vertex_attr(g, "vertex_name"))
+
+sp <- igraph::shortest_paths(
+  g,
+  from = from_id,
+  to = to_id,
+  weights = w,
+  output = "both"
+)
+
+path_edge_ids <- igraph::edge_attr(g, "edge_id")[as.integer(sp$epath[[1]])]
+path_node_ids <- igraph::vertex_attr(g, "node_id")[as.integer(sp$vpath[[1]])]
+
+path_edges <- edges |>
+  filter(edge_id %in% path_edge_ids)
+
+path_nodes <- nodes |>
+  filter(node_id %in% path_node_ids)
+
+path_length <- sum(path_edges$dist_m, na.rm = TRUE)
+
+path_length
+
+
+# plot the shortest path with ggplot2
+ggplot() +
+  geom_sf(
+    data = edges,
+    color = "grey75",
+    linewidth = 0.5
+  ) +
+  geom_sf(
+    data = path_edges,
+    color = "red",
+    linewidth = 1.6
+  ) +
+  geom_sf(
+    data = nodes,
+    color = "grey30",
+    size = 1.5,
+    alpha = 0.6
+  ) +
+  geom_sf(
+    data = path_nodes,
+    color = "red",
+    size = 3
+  ) +
+  geom_sf_text(
+    data = path_nodes,
+    aes(label = vertex_name),
+    size = 3,
+    nudge_y = 0.00004,
+    check_overlap = TRUE
+  ) +
+  labs(
+    title = "Shortest path in the Roxel cycleway network",
+    subtitle = paste0(
+      "From ", from_vertex, " to ", to_vertex,
+      "; path length = ", round(path_length, 1), " m"
+    )
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+# use mapview
+mapview(edges, zcol = "dist_m", lwd = 3, layer.name = "Edge (m)") +
+  mapview(nodes, col.regions = "grey50", cex = 5, layer.name = NULL) +
+  mapview(path_edges, color = "red", lwd = 6, alpha =1, layer.name = "shortest path")
+```
+
+
+
+
+
