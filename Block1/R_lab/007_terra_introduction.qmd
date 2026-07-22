@@ -1,0 +1,152 @@
+---
+title: "terra"
+format: html
+---
+
+# Goals for this script:
+
+* Quick introduction to the `terra` package [https://rspatial.github.io/terra/](https://rspatial.github.io/terra/) 
+* rasters, basic operations with rasters  
+* `terra::mosaic()`  
+* `terra::crop()`  
+* `terra::mask()`  
+
+--- 
+
+
+```{r}
+#| message = F
+library(RCzechia)
+library(sf)
+library(terra)
+
+```
+
+--- 
+
+## Create a raster from scratch 
+
+
+```{r}
+r <- terra::rast(xmin = -60, xmax = 60, ymin = -35, ymax = 35, res=1, vals=0) 
+# vals argument can be skipped
+r # Description of the raster we have just created. Note the default CRS.
+terra::ncell(r) # returns the number of cells in the raster
+terra::values(r) <- rnorm(ncell(r),sd=0.1)  # random field
+plot(r)
+```
+
+---  
+
+## Basic operations on raster objects 
+
+
+```{r}
+# create 3 additonal rasters, x,y,z:
+# raster x
+x <- rast(xmin = -40, xmax = 10, ymin = -15, ymax = 15, res=1, vals=-1)
+# raster y
+y <- rast(xmin = -25, xmax = 25, ymin = -25, ymax = 5, res=1)
+ycrds <- terra::crds(y,df=TRUE)
+values(y) <- ifelse(abs(ycrds$x) + abs(ycrds$y) < 10, 1.5, NA)
+# raster z
+z <- rast(xmin = -10, xmax = 40, ymin = -35, ymax = -5, res=1, vals=3)
+#
+# plot the data (separate plots, each with own scale...)
+par(mfrow = c(1, 3))
+plot(x)
+plot(y)
+plot(z)
+par(mfrow = c(1, 1))
+#
+# r, x,y,z are 4 different rasters, partly overlapping, 
+# "observed" values are also different 
+# 
+# mosaic() joins rasters into a single element
+#
+m1 <- mosaic(r,x, y, z, fun="mean") # fun="mean" is the default setting,
+# controls how values in overlapping areas are calculated based on inputs
+plot(m1) 
+#
+# join x,y,z rasters (without the backgroud raster r)
+m2 <- mosaic(x, y, z, fun="mean")
+plot(m2)
+ncell(m2)
+```
+
+--- 
+
+## `crop()` and `mask()` functions 
+
+```{r}
+cropped <- terra::crop(m1, m2) # crop m1 to the bbox of m2
+plot(cropped)
+masked <- terra::mask(cropped, m2)
+plot(masked)
+ncell(masked) # compare to the previously plotted m2 (no random background)
+#
+# Alternative masking: keeps full extent of the m1 raster
+# repeat plot for reference
+plot(m1)
+m2_ext <- terra::extend(m2, m1) # Enlarge the spatial extent of a SpatRaster
+masked_full <- terra::mask(m1, m2_ext)
+plot(masked_full)
+ncell(masked_full)
+```
+
+
+## Rasters with multiple layers
+
+```{r}
+m3 <- c(m1,m2_ext)
+names(m3) <- c("full data","masked view")
+m3
+plot(m3)
+
+```
+
+
+---- 
+
+## Real world example: terrain profile (elevation) in Czechia
+
+```{r}
+# Get raster data from RZcechia (Copenicus-based, approx. 70 MB)
+CZProfile <- RCzechia::vyskopis(format="actual",cropped = F)
+CZProfile
+ncell(CZProfile)
+# Get Czechia state boundaries
+CZbound <- RCzechia::republika(resolution = "low")
+#
+# Plot the raster
+plot(CZProfile)
+plot(CZbound,
+     border = "red",
+     col = NA,
+     add = TRUE)
+#
+# Crop raster to a bounding box of CZ borders
+CZcropped <- terra::crop(CZProfile, CZbound) 
+# crop raster to the bbox of a polygon
+#
+# Plot cropped raster
+plot(CZcropped)
+plot(CZbound,
+     border = "red",
+     col = NA,
+     add = TRUE)
+#
+# Mask to a polygon-based boundary (drop rest)
+CZmasked <- terra::mask(CZcropped, CZbound)
+#
+plot(CZmasked)
+#
+# Alternative masking: without cropping
+CZProfile |>  
+  terra::mask(CZbound) |> 
+  plot()
+```
+
+----
+
+Data formats and other topics related to rasters & remote sensing will be discussed separately. 
