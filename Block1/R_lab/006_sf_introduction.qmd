@@ -103,6 +103,7 @@ geosp |>
 | Format Name   | File Extension | GDAL Driver      | Description |
 |---------------|----------------|------------------|-------------|
 | GeoPackage    | .gpkg          | GPKG             | Modern SQLite-based format; supports multiple layers and large datasets efficiently. |
+| FlatGeobuf    | .fgb           | FlatGeobuf       | Single layer, large datasets, fast access |
 | ESRI Shapefile| .shp           | ESRI Shapefile   | Legacy GIS format; widely supported but has limitations. |
 | GeoJSON       | .geojson       | GeoJSON          | Lightweight JSON-based format used in web mapping applications. |
 
