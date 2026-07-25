@@ -82,3 +82,48 @@ box(col = 'grey')
 All geometry types: [https://r-spatial.org/book/03-Geometries.html](https://r-spatial.org/book/03-Geometries.html)  
 
 ------------------------------------------------------------------------
+
+
+## Buffer, convex hull, centroid
+
+
+```{r}
+# buffer
+seine <- spData::seine
+plot(seine)
+seine_buff_10km = st_buffer(seine, dist = 10000)
+
+# sf plot
+plot(seine_buff_10km, reset = F)
+plot(seine,col="black", add=TRUE)
+# mapview
+mapview(seine_buff_10km, alpha = 0.5, layer.name = "Buffer 10 km") +
+  mapview(seine,  lwd = 3, layer.name = "Seine")
+```
+
+
+```{r}
+# convex hull around the seine + 10km buffer
+seine_convex_hull <- seine_buff_10km |> 
+  st_union() |> 
+  st_convex_hull()
+# sf plot
+plot(seine_convex_hull, reset = F)
+plot(seine,col="black",lwd=2, add=TRUE)
+# mapview
+mapview(seine_convex_hull, alpha = 0.5) +
+  mapview(seine,  lwd = 2, layer.name = "Seine")
+```
+
+```{r}
+# center - centroid - of the convex hull
+seine_centroid <- st_centroid(seine_convex_hull)
+# sf plot
+plot(seine_convex_hull, reset = F)
+plot(seine_centroid,col="red",lwd=2, add=TRUE)
+# mapview
+mapview(seine_convex_hull, alpha = 0.5) +
+  mapview(seine_buff_10km, alpha = 0.5, layer.name = "Buffer 10 km") +
+  mapview(seine, lwd = 2, layer.name = "Seine")+
+  mapview(seine_centroid, col.regions = "red")
+```
