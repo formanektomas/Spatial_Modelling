@@ -1,0 +1,208 @@
+---
+title: "CRS and projections"
+output: html_document
+---
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(eurostat)
+library(giscoR)
+library(sf)
+library(spData)
+library(RCzechia)
+library(terra)
+```
+
+
+--- 
+
+# Goal of this script
+
+* CRS  
+* WKT  
+* Reprojecting maps (`sf`)
+* Reprojecting rasters (`terra`)
+
+---
+
+
+# Reprojecting maps (`sf`)
+
+
+
+
+## Retrieving spatial information
+
+```{r}
+# Load dataset
+data("alaska", package = "spData")
+
+#------------------------------------------------------------------------------
+# Basic spatial information
+#------------------------------------------------------------------------------
+
+alaska
+
+st_geometry_type(alaska)
+st_crs(alaska)
+st_bbox(alaska)
+nrow(alaska)
+
+```
+
+## WKT
+
+```{r}
+
+#------------------------------------------------------------------------------
+# WKT representation
+#------------------------------------------------------------------------------
+
+wkt <- st_as_text(st_geometry(alaska)[1])
+substr(wkt,1,300) # first 300 characters
+
+```
+
+## Reprojecting vector-based maps
+
+```{r}
+# WGS84 geographic coordinates
+alaska_4326 <- st_transform(alaska, 4326)
+
+# Native projection
+alaska_3338 <- alaska
+
+# Lambert Azimuthal Equal Area
+alaska_laea <- st_transform(
+  alaska,
+  "+proj=laea +lat_0=60 +lon_0=-150 +datum=WGS84 +units=m +no_defs"
+)
+
+alaska_4326
+alaska_3338
+alaska_laea
+
+```
+
+
+## Alaska plotted in different projections
+
+```{r}
+ggplot(alaska_4326) +
+  geom_sf(fill = "lightgreen", color = "black") +
+  ggtitle("WGS84 (EPSG:4326)") +
+  theme_minimal()
+
+ggplot(alaska_3338) +
+  geom_sf(fill = "lightblue", color = "black") +
+  ggtitle("NAD83(NSRS2007)\nAlaska Albers") +
+  theme_minimal()
+
+ggplot(alaska_laea) +
+  geom_sf(fill = "salmon", color = "black") +
+  ggtitle("Lambert Azimuthal\nEqual Area") +
+  theme_minimal()
+
+```
+
+
+## Supervised exercise: Sweden 
+
+* task setup
+
+```{r}
+# task setup: download NUTS2 regions for Sweden
+# - 
+nuts2 <- gisco_get_nuts(
+  year = "2024",
+  nuts_level = 2,
+  epsg = 4326, # or  3035 <--> ETRS89 / LAEA Europe
+  resolution = "03"
+)
+nuts2
+
+Sweden <- nuts2 |> 
+  filter(CNTR_CODE== "SE")
+Sweden
+
+Sweden |> 
+  mutate(NUTS_ID = as.factor(NUTS_ID)) |> 
+  ggplot() +
+    geom_sf(aes(fill = NUTS_ID), color = "black") +
+    theme_minimal()
+
+# How to set the centerpoint for the LAEA projection
+ctr <- st_coordinates(st_centroid(Sweden)) 
+ctr
+
+# Use geographical center of Sweden
+ctr <- Sweden |> 
+  st_union() |> # join all NUTS2 regions >> NUTS0
+  st_centroid() |> 
+  st_coordinates()
+ctr
+
+# To use bounding box can be convenient for some countries/geometries...
+# (what happens if we use bbox-based center to LAEA project Alaska?)
+
+# What is a bounding box?
+bbox_ctr <- Sweden |> 
+  st_bbox() |> # generate a vector of 4 elements: xmin, ymin, xmax, ymax
+  st_as_sfc()
+
+plot(bbox_ctr, reset=FALSE)
+plot(Sweden[,"NUTS_ID"], add=TRUE)
+
+# Find bbox-based center for Sweden
+bbox_ctr <- Sweden |> 
+  st_bbox() |> # generate a vector of 4 elements: xmin, ymin, xmax, ymax
+  st_as_sfc() |> # convert bbox to polygon
+  st_centroid() |> # find geographic center
+  st_coordinates() # return coordinates
+bbox_ctr
+```
+
+* Reproject Sweden to LAEA
+
+```{}
+
+
+```
+
+--- 
+
+# Reprojecting rasters (`terra`) 
+
+* same principle as vector-based projections / reprojections  
+* for `terra`, use `project()` instead of `st_transform()`
+
+```{r}
+CZelevation <- RCzechia::vyskopis(format = "actual")
+CZelevation
+
+CZelevation_laea <- project(CZelevation,  "EPSG:3035") # LAEA Europe
+CZelevation_laea
+
+CZelevation_Krovak <- project(CZelevation,  "EPSG:5514") # Krovak projection
+CZelevation_Krovak
+
+plot(CZelevation)
+plot(CZelevation_laea)
+plot(CZelevation_Krovak)
+```
+
+----  
+
+## Supervised exercise
+
+* Project `CZelevation` to LAEA, but use Iceland's LAEA reference point: approx 65°N, 19°W (Note: coordinates on the western hemishere should be entered as negative numbers: `lon_0 = -19`)
+
+
+```{r}
+# Complete the task here
+```
+
+
