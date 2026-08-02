@@ -1,0 +1,357 @@
+---
+title: "Eurostat database and package"
+output: html_document
+---
+
+# `{eurostat}` 
+
+
+## Goal of this script
+
+* Use of `{eurostat}` R package - API to access open data from [Eurostat](http://ec.europa.eu/eurostat)  
+* data search  
+* download   
+* manipulation   
+* visualization   
+
+
+---  
+
+## Using the package
+
+* [Cheat sheet: eurostat R package](https://raw.githubusercontent.com/rstudio/cheatsheets/main/eurostat.pdf)
+* [Tutorial (vignette) for the eurostat R package](https://ropengov.github.io/eurostat/articles/eurostat_tutorial.html)
+* [Detailed documentation for eurostat functions](http://ropengov.github.io/eurostat/index.html)
+
+--- 
+
+```{r, echo=T, message=F, warning=F}
+options(readr.default_locale=readr::locale(tz="Europe/Berlin"))
+library(eurostat)
+library(sf)
+library(knitr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+library(zoo)
+```
+
+--- 
+
+## Search Eurostat for data
+
+
+
+| Command              | Description                                          |  
+|----------------------|------------------------------------------------------|  
+| `get_eurostat_toc()` | Download table of contents of Eurostat datasets      |  
+| `search_eurostat()`  | Retrieve datasets titles from Eurostat (regex syntax)     |  
+| `get_eurostat()`     | Read Eurostat data                                   |  
+| `label_eurostat()`   | Get Eurostat code descriptions                       |  
+| `get_eurostat_geospatial()`   | Download geospatial data from GISGO         |  
+ 
+
+<br>
+<br>
+
+With `search_eurostat()`, you can search the table of contents for particular text (text patterns). 
+
+* *regex*: R regular expression syntax is used: see `?regex` for details.
+
+* `.*` is particularly useful basic "tool" in text pattern search: 
+
+    + The period `.` matches any single character.  
+    + `*`: The preceding item (`.`) will be matched zero or more times.  
+
+* **regex is case sensitive** -- see next example, where we search Eurostat for unemployment data:
+
+
+```{r}
+# kable() generates tabular (formatted) output in Rmd files
+# .. fixed=F allows for complex/flexible matching, vs the default "as is" setting
+kable(search_eurostat(".*unemployment.*rates.*NUTS", fixed=F))
+kable(search_eurostat(".*Unemployment.*rates.*NUTS", fixed=F))
+```
+
+```{r, eval=FALSE, echo=T}
+# Alternatively, you can use grep() to search a downloaded TOC
+# .. this way, you can deal with the case-sensitivity "issue"
+toc <- get_eurostat_toc() # Downloads Table of Contents of Eurostat Data Sets
+toc[grep(".*unemployment.*rates.*NUTS", toc$title, ignore.case = T),]$title
+# ... this R code is not executed, provided for your information only
+# ... you can switch the `eval` argument to produce the output table
+```
+
+
+--- 
+
+<br>
+<br>
+
+# Empirical example: unemployment data
+
+
+## Download data
+
+As an example, let's choose the **Unemployment rates by sex, age and NUTS 2 regions (%)** dataset	`lfst_r_lfu3rt`
+
+* All datasets are available through a web browser
+* https://ec.europa.eu/eurostat/databrowser/view/lfst_r_lfu3rt/default/table?lang=en
+
+Download the data:
+
+```{r, message=F}
+# https://ec.europa.eu/eurostat/databrowser/view/lfst_r_lfu3rt/default/table?lang=en
+Un_DF <- get_eurostat("lfst_r_lfu3rt", time_format = "num") # the simplified time format
+dim(Un_DF)
+str(Un_DF)
+UnemploymentDF <- Un_DF %>% 
+  mutate(unit = as.factor(unit),
+         age = as.factor(age),
+         sex = as.factor(sex),
+         geo = as.factor(geo),
+         isced11 = as.factor(isced11))
+summary(UnemploymentDF) # note the "values" variable - it contains Unemployment rates for a given "row"
+```
+
+
+By default, variable identification is provided through Eurostat **codes**.
+
+* To get human-readable labels instead, we can use `label_eurostat()` function
+* Labels are good for orientation in the dataset, NOT for wider/longer data handling and other data manipulations.
+
+
+```{r, echo=T, message=F}
+Un_DF_lab <- label_eurostat(Un_DF, fix_duplicated = T)
+```
+
+```{r}
+head(Un_DF_lab,6)
+```
+
+Also, codes and their "descriptions" can be shown side-by-side:
+
+```{r, warning=F}
+kable(cbind(as.character(unique(Un_DF$isced11)),as.character(unique(Un_DF_lab$isced11))))
+kable(cbind(as.character(unique(Un_DF$age)),as.character(unique(Un_DF_lab$age))))
+kable(cbind(as.character(unique(Un_DF$sex)),as.character(unique(Un_DF_lab$sex))))
+kable(cbind(as.character(unique(Un_DF$geo)),as.character(unique(Un_DF_lab$geo)))[1:17,])
+# note the NUTS-code format:
+# NUTS0 (states) have 2-digit IDs ... "AT"
+# NUTS1 regions have 3-digit IDs
+# NUTS2 regions have 4-digit IDS 
+#
+```
+
+---
+
+## Data handling
+
+We can simply save the data for subsequent use:
+
+ * To perform the operation, disable the `eval=FALSE` argument.
+
+```{r, eval=FALSE}
+write.csv(Un_DF, "datasets/Unemployment.csv", row.names = F)
+```
+
+----
+
+We can use `{tidyverse}` and `{ggplot2}` functions to filter and plot data. 
+
+## Time path unemployment plot for selected countries 
+
+Using the `Un_DF`, perform the following data handling (mostly filtering):  
+
+* `Y15-74` i.e. age group *from 15 to 74 years*  
+* Years 2010 and newer  
+* Total unemployment only (no M/F/T) structure  
+* All education levels combined
+* Select only: Austria, Czech Republic, Germany, Hungary, Poland, Slovakia  
+* Show NUTS0 leve only (State-level)  
+
+
+
+```{r}
+Un_DF %>% 
+  filter(age == "Y15-74", 
+         TIME_PERIOD >= 2010, 
+         sex == "T", 
+         isced11 == "TOTAL",
+         geo %in% c("AT","CZ","DE","HU","PL","SK")) %>% 
+  ggplot(aes(x = TIME_PERIOD, y = values, colour = geo))+ # plot filtered data
+    geom_line()+ # choose plot type
+    ggtitle("Unemployment rates: country-level time paths")+ # Define main title
+    ylab("Unemployment (%)")+  # define label on the y-axis
+    theme_minimal()  # choose plot "design"
+```
+
+
+---
+
+<br>
+
+## Choropleth (infomap) of unemployment
+
+We continue with the previously used `Un_DF` Unemployment dataset as in **Example 1** 
+
+The following tasks (filtering) will be performed:  
+
+* `Y15-74` i.e. age group *from 15 to 74 years*  
+* Use data for 2018 and 2024  
+* Total unemployment only (no M/F/T)  
+* All education levels
+* Use NUTS2-level data
+* Use only the following countries: Austria, Czech Republic, Germany, Hungary, Poland, Slovakia  
+* Draw choropleth (cartogram, infomap)
+
+```{r, echo=T, message=F}
+countries <- c("AT","CZ","DE","HU","PL","SK")
+# Download geospatial data from GISCO
+geodata <- giscoR::gisco_get_nuts()
+# Download state-borders separately
+borders <- geodata |> 
+  filter(CNTR_CODE %in% countries, LEVL_CODE == 0)
+# Filter Unemployment dataset for the year 2017
+myDF1 <- Un_DF %>% 
+  filter(age == "Y15-74", 
+         TIME_PERIOD %in% c(2018,2024), 
+         sex == "T", 
+         isced11 == "TOTAL") %>% 
+  filter(nchar(as.character(geo)) == 4) %>% # NUTS2 regions have a 4-digit id
+  mutate(NUTS0 = substr(as.character(geo), start=1, stop=2)) %>% # retrieve NUTS0 id from NUTS2
+  filter(NUTS0 %in% countries ) 
+# Join Unemployment data with "map data"
+map_data <- inner_join(geodata, myDF1)
+# plot the data
+ggplot()+ 
+  geom_sf(data = map_data, aes(fill = values))+ 
+  # note that "values" is name of column that stores unemployment data...
+  scale_fill_gradientn('Unem. \n(%) ', colours=brewer.pal(8, "Reds"))+
+  facet_wrap(~TIME_PERIOD, ncol=2)+
+  geom_sf(data= borders, fill=NA, col="black",lwd=0.8)+
+  ggtitle("Unemployment rates (%)")
+```
+
+---
+
+**Quick assignment:** 
+
+* Add Netherlands (`NL`) to the infomap.  
+* Save the unemployment data (sf object) as `gpkg`
+
+--- 
+
+<br> 
+<br> 
+
+
+# Supervised exercise:  
+
+**Total wages/compensations per region by NACE r2 activities**
+
+1. Download "nama_10r_2coe" from Eurostat (use simplified time format).  
+2. Check the structure of your dataset. 
+3. Find out the meaning of `currency` and `nace_r2` codes.  
+4. Retrieve data for the sector "Financial and insurance activities" for CZ, SK, SI, AT (NUTS0), years 2015 - 2024, in euro.
+5. Plot the data using `ggplot` (time-path or infomap)
+
+* Use pipe operator for steps 4 & 5.  
+* (you may find it easier to perform this exercise in a separate R-script, load `eurostat` `ggplot2` and `dplyr` first)  
+* This is just a simple exercise focused on downloading and filtering data from Eurostat... data among states are not directly comparable (we would need a per-employee standardization).
+
+```{r}
+
+
+
+```
+
+---
+
+<br>
+
+# Example 3: Non-spatial (time series) data handling
+
+
+**Save Unemployment time series data into a `zoo` object**
+
+
+#### Long format (not a TS object)
+
+
+```{r}
+Un_DF %>% 
+  filter(age == "Y15-74", 
+         TIME_PERIOD >= 2010, 
+         sex == "T", 
+         isced11 == "TOTAL",
+         geo %in% c("AT","CZ","DE","HU","PL","SK")) %>% 
+  head(10)
+```
+
+
+#### TS format (`zoo`-type TS object)
+
+
+```{r}
+# Step 1 - wider format
+Unempl <- Un_DF %>% 
+  filter(age == "Y15-74", 
+         TIME_PERIOD >= 2010, 
+         sex == "T", 
+         isced11 == "TOTAL",
+         geo %in% c("AT","CZ","DE","HU","PL","SK")) %>% 
+  pivot_wider(names_from = "geo", values_from = "values") # convert to wider format
+head(Unempl) # wider format, not a TS/zoo object
+#
+# Step 2:  convert to zoo format
+# Here, I choose to drop columns that have zero variability 
+# (given the filtering that was performed in previous steps)
+# plus the time column (as information is contained in the zoo object)
+Unempl.zoo <- zoo(Unempl[,-c(1:5)], order.by = Unempl$TIME_PERIOD) 
+class(Unempl.zoo)
+head(Unempl.zoo)
+```
+
+---
+
+#### Quarterly data - {eurostat} to `zoo` - example (TS)
+
+* Second example on transforming Eurostat data into TS using '{zoo}'  
+* This time, we use quarterly data (for monthly data, steps are analogous)  
+
+
+First, we download a new dataset that contains quarterly data: `lfsq_urgan`
+
+[Unemployment rates by sex, age and citizenship (%)](https://ec.europa.eu/eurostat/databrowser/view/lfsq_urgan/default/table?lang=en)
+
+```{r}
+Un.Q <- get_eurostat("lfsq_urgan", time_format = "num") # note the simplified time format
+str(Un.Q)
+Un.Q %>% 
+  mutate(unit = as.factor(unit),
+         age = as.factor(age),
+         sex = as.factor(sex),
+         citizen = as.factor(citizen)) %>% 
+  summary()
+# Plot unemployment of foreigners (%)
+Un.Q <- Un.Q %>% 
+  filter(age == "Y15-74", 
+         TIME_PERIOD >= 2010, 
+         sex == "T", 
+         citizen == "FOR",
+         geo %in% c("AT","CZ","DE")) %>%
+  pivot_wider(names_from = "geo", values_from = "values") # convert to wide format
+head(as.data.frame(Un.Q)) # wide format, not a TS object
+# Note the "order.by = as.yearqtr" syntax
+# .. I drop redundant columns
+Un.Q.zoo <- zoo(Un.Q[,-c(1:5)], order.by = as.yearqtr(Un.Q$TIME_PERIOD)) 
+Un.Q.zoo$TIME_PERIOD <- NULL
+head(Un.Q.zoo)
+# Simple TS plotting from the {ggplot2} package
+autoplot(Un.Q.zoo) 
+```
+--- 
+
+
