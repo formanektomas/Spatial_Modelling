@@ -1,0 +1,200 @@
+---
+title: "Map-based operations"
+output: html_document
+---
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(RColorBrewer)
+library(eurostat)
+library(giscoR)
+library(sf)
+library(spData)
+library(RCzechia)
+library(terra)
+```
+
+# Goal of this script
+
+> Processing different `sf` geometries  
+> Visualizing data: maps, choropleths  
+> Extracting information from different types of map data    
+
+
+--- 
+
+<br>
+<br>
+
+## Example 1: Count the number of points within polygons 
+
+* Use North Carolina map  
+* Simulate occurrences of some rare disease over a map  
+* Count and visualize the occurrences  
+
+```{r}
+nc_map <- st_read(system.file("shape/nc.shp", package="sf")) |> 
+  dplyr::select(CNTY_ID,NAME)
+nc_map
+# Map of North Carolina
+ggplot() + geom_sf(data = nc_map)
+# Simulate rare disease occurrences across NC
+#  type = "random", by_polygon = FALSE: default settings
+set.seed(123456)
+occurrences <- st_sample(nc_map, size=70, type = "random", by_polygon = FALSE)
+# Plot the occurences
+ggplot() + geom_sf(data = nc_map) + geom_sf(data = occurrences, col ="red")
+# Intersection (first argument map, then points)
+intersections <- st_intersects(nc_map, occurrences)
+# this datasets maps to nc_maps easily
+intersections
+# reverse order of arguments
+intersections2 <- st_intersects(occurrences, nc_map)
+# this one doesn't map to nc_maps..
+intersections2
+# add occurrence counts to nc_maps
+nc_map$occurrences <- lengths(intersections)
+nc_map
+# plot the result (number of points within polygons)
+ggplot(nc_map) +
+  geom_sf(aes(fill = occurrences)) +
+  scale_fill_gradientn('Occurences \nof disease', colours=brewer.pal(9, "Reds"))
+```
+
+--- 
+
+<br>
+<br>
+
+## Example 2 (supervised work): Land area and population density in Africa
+
+* Land area in Africa (simplified, based on `spData::world()`)  
+* Population counts  
+* Population density  
+* Country-based & region based analysis  
+
+```{r}
+world_data <- st_read(system.file("shapes/world.gpkg", package="spData"))
+world_data |> filter(continent == "Africa") |>  dplyr::select(subregion) |> plot()
+Africa <- world_data |> filter(continent == "Africa")
+Africa
+# Country-level population density plot
+Africa |> 
+  mutate(density=pop/area_km2) |> 
+  ggplot() +
+  geom_sf(aes(fill = density)) +
+  scale_fill_gradientn('Population \ndensity \ncountry \naggregate', colours=brewer.pal(9, "Oranges"))+
+  theme_minimal() +
+  ggtitle("Population density (country-level aggregates)")
+
+# Task 1: Calculate the total population, area, and population density in Africa
+
+
+# Task 2: Calculate and visualize population density for different Subregions in Africa
+# - aggregate Subregion population and area first, 
+# then calculate population density over the Subregions
+
+
+```
+
+
+---
+
+<br>
+<br>
+
+## Example 3 Coffee production in Africa
+
+* Join data from two datasets (spData::world(), spData::coffee_data())
+
+
+```{r}
+Africa
+coffee <- spData::coffee_data
+coffee # coffee is table, with no spatial information (besides country name)
+# join the two datasets 
+AfricaCoffee <- Africa |> 
+  left_join(coffee, by = "name_long")
+#
+# Note - a common problem in map handling
+#
+st_drop_geometry(Africa[3,])
+coffee[7,]
+# "Democratic Republic of the Congo" is abbreviated to "Congo, Dem. Rep. of" in coffee dataframe
+# clearly, this causes left_join() to miss the DRC as coffee producer.
+#
+# There are different options to fix this problem
+#
+# a) directly fix (rewrite) DRC name in one of the datasets to make them match (one-off solution)
+# b) use regex-based fix to address multiple occurrences (not present in our example, but common issue)
+drc <- stringr::str_subset(world$name_long, "Dem*.+Congo")
+drc
+# fix all occurrences (and even different types of abbreviations)
+coffee$name_long[grepl("Congo,", coffee$name_long)] <- drc
+# Join the fixed datasets
+AfricaCoffee <- Africa |> 
+  left_join(coffee, by = "name_long") |> 
+  mutate(across(c(coffee_production_2016,coffee_production_2017), \(x) tidyr::replace_na(x, 0)))
+AfricaCoffee
+# plot 2017 coffee production
+AfricaCoffee |> 
+  ggplot()+
+  geom_sf(aes(fill=coffee_production_2017),col="grey50") +
+  scale_fill_gradientn('Coffee \nproduction \n2017', colours=brewer.pal(9, "Blues"))+
+  theme_minimal()
+```
+
+
+* As dataframes and `sf` objects are joined, ordering matters:
+
+```{r}
+Africa |> 
+  left_join(coffee, by = "name_long") |> 
+  class()
+
+coffee |> 
+  inner_join(Africa, by = "name_long") |> 
+  class()
+```
+
+
+--- 
+
+<br>
+<br>
+
+## Example 4 (supervised work): River lengths across regions
+
+* Labe and Vltava (2 major Czech rivers)  
+* Total lengths  
+* Lengths in different NUTS3 regions (for each NUTS3 region, show river length for Labe & Vltava)
+
+```{r}
+rivers <- RCzechia::reky(resolution = "low") |> 
+  dplyr::filter(NAZEV %in% c("Labe","Vltava")) |> 
+  group_by(NAZEV) |> 
+  summarize() |> # removes the navigable/non-navigable distinction
+  ungroup()
+rivers
+NUTS3 <- RCzechia::kraje(resolution = "low")
+NUTS3
+# plot the rivers
+ggplot() + 
+  geom_sf(data = NUTS3) + 
+  geom_sf(data = rivers, aes(col=NAZEV),lwd=1)+
+  theme_minimal()
+#
+# task 1: calculate total length of each river (Labe, Vltava)
+# task 2: calculate the length of each river across NUTS3 regions
+# Note and remember:
+# EPSG:4326 >> geodetic length on Earth surface (in metres)
+# EPSG:5514 >> planar Euclidean length in projected metres
+
+
+
+```
+
+
