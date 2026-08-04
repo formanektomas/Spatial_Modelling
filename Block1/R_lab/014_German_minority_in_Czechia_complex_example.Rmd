@@ -1,0 +1,815 @@
+---
+title: "German minority on the territory of Czechia"
+subtitle: "Spatial interpolation using 1930 & 2011 census data"
+author: ""
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+library(sf)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(ggplot2)
+library(gridExtra)
+library(tibble)
+library(knitr)
+```
+
+> Goal of the script:  
+Evaluate the compound effects of ethnic cleansing of the German population after World War 2, and other post-war influences, on the relative presence on the German minority on the territory of Czechia.
+
+* Analyze changes in relative presence of the German minority.  
+* Compare 2011 data (77 LAU1 regions) with 1930 data (330 judicial districts)  
+
+--- 
+
+* We have two spatial datasets (`sf`) with different administrative geographies. Both datasets contain demographic data:  
+    - `okresy_1930`: with 330 historical juditcial districts and 1930 demographic data.  
+    - `okresy_2011`: with 77 LAU1 districts and 2011 demographic data.  
+* 2011-based declaration of ethnicity is based on self-proclamation   
+* For information on historical data, refer to:  
+    - [https://cuni.maps.arcgis.com/sharing/rest/content/items/c2f19cd1146747a9a8daf5b900e7747b/data](https://cuni.maps.arcgis.com/sharing/rest/content/items/c2f19cd1146747a9a8daf5b900e7747b/data)    
+    - [https://karolinum.cz/casopis/auc-geographica/rocnik-50/cislo-2/rok-2015/clanek-2194](https://karolinum.cz/casopis/auc-geographica/rocnik-50/cislo-2/rok-2015/clanek-2194)  
+    - Data available through `RCzechia::historie()`  
+
+
+```{r, include=FALSE}
+#
+# you can read the data from RCzechia:
+#
+# sf_use_s2(use_s2 = TRUE) 
+# okresy_1930 <- historie("okresy_1930")
+# #  If you run st_simplify, the input data is specified with long-lat coordinates 
+# # and sf_use_s2() returns TRUE, then the value of dTolerance must be specified in meters.
+# simple <- st_simplify(okresy_1930,dTolerance=100)
+# simple <- simple |> 
+#   dplyr::select("počet obyvatel přítomných","národnost německá","OBJECTID","NAZEV") |> 
+#   dplyr::rename("pTot1930" = "počet obyvatel přítomných",
+#                 "pGer1930" = "národnost německá",
+#                 "id1930" = "OBJECTID",
+#                 "name" = "NAZEV")
+# st_write(simple,"districts_1930.fgb")
+# #
+# okresy_2011 <- historie("okresy_2011")
+# simple11 <- st_simplify(okresy_2011,dTolerance=100)
+# simple11 <- simple11 |> 
+#   dplyr::select("počet obyvatel obvykle bydlících","národnost německá","OBJECTID","NAZEV") |> 
+#   dplyr::rename("pTot2011" = "počet obyvatel obvykle bydlících",
+#                 "pGer2011" = "národnost německá",
+#                 "id2011" = "OBJECTID",
+#                 "name" = "NAZEV")
+# st_write(simple11,"districts_2011.fgb")
+#
+#
+# or just read-in the two sf datasets
+CZ1930 <- st_read("data/districts_1930.fgb")
+CZ2011 <- st_read("data/districts_2011.fgb")
+```
+
+--- 
+
+--- 
+
+The variable of interest is the German population share:
+
+\[
+S_i = \frac{G_i}{P_i}
+\]
+
+where:
+
+- \(G_i\) is German population in district \(i\),
+- \(P_i\) is total population in district \(i\),
+- \(S_i\) is the German population share.
+
+--- 
+
+--- 
+
+# Basic data wrangling
+
+```{r,echo=TRUE}
+# Data preparation: district area, population density, German shares per region
+CZ1930 <- CZ1930 |> 
+  mutate(sGer1930 = (pGer1930/pTot1930)*100) |>  # in %
+  arrange(id1930) |> 
+  st_make_valid() |>
+  st_transform(5514) |> # planar projection for area calculation
+  mutate(area1930 = as.numeric(st_area(geometry))) |> 
+  mutate(area1930 = area1930*1e-06) |> # m2 >> km2
+  mutate(pTdens1930 = pTot1930/area1930) |> # calculate total population density
+  st_transform(4326) # back to WGS 84
+CZ1930
+
+CZ2011 <- CZ2011 |> 
+  mutate(sGer2011 = (pGer2011/pTot2011)*100) |>  # in %
+  arrange(id2011)|> 
+  st_make_valid() |>
+  st_transform(5514) |> 
+  mutate(area2011 = as.numeric(st_area(geometry))) |> 
+  mutate(area2011 = area2011*1e-06) |>
+  mutate(pTdens2011 = pTot2011/area2011) |> # calculate total population density
+  st_transform(4326)
+CZ2011
+# Prepare scales that are fixed and can be used across maps, prepare summaries and plots
+#
+# Population share in 1930, 0-100 %
+my_scale <- scale_fill_gradient(
+  low = "white",
+  high = "red",
+  limits = c(0, 100),
+  breaks = c(0, 25, 50, 75, 100),
+  labels = scales::percent_format(scale = 1, accuracy = 1),
+  name = "Germans\n(ethnic)\nshare"
+)
+
+# Population share in 2011, 0-3 %
+my_scale2 <- scale_fill_gradient(
+  low = "white",
+  high = "blue",
+  limits = c(0, 3),
+  breaks = c(0, 1, 2, 3),
+  labels = scales::percent_format(scale = 1, accuracy = 1),
+  name = "Germans\n(ethnic)\nshare"
+)
+
+# Population density (for compatibility across 1930 and 2011)
+my_scale3 <- scale_fill_gradientn(
+  colours = c("white", "#c7e9c0", "#74c476", "#238b45", "#00441b"),
+  trans = scales::pseudo_log_trans(base = 10),
+  limits = c(0, 8000),  
+  breaks = c(0, 10, 100, 1000, 8000),
+  labels = scales::label_number(accuracy = 1),
+  name = "Population \nper km sq.")
+
+
+G1930 <- CZ1930 |> 
+  ggplot() +
+  geom_sf(aes(fill = sGer1930), color = "grey30", linewidth = 0.1) +
+  my_scale +
+  labs(title = "1930: The relative share of German population \nscale 0% - 100%") +
+  theme_minimal()
+
+G2011 <- CZ2011 |> 
+  ggplot() +
+  geom_sf(aes(fill = sGer2011), color = "grey30", linewidth = 0.1) +
+  my_scale2 +
+  labs(title = "2011: The relative share of German population \nscale 0% - 3%") +
+  theme_minimal()
+
+Dens1930 <- CZ1930 |> 
+  ggplot() +
+  geom_sf(aes(fill = pTdens1930), color = "grey30", linewidth = 0.1) +
+  my_scale3 +
+  labs(title = "1930: Total population density (inhabitants / km2, log-transf.)") +
+  theme_minimal()
+
+Dens2011 <- CZ2011 |> 
+  ggplot() +
+  geom_sf(aes(fill = pTdens2011), color = "grey30", linewidth = 0.1) +
+  my_scale3 +
+  labs(title = "2011: Total population density (inhabitants / km2, log-transf.)") +
+  theme_minimal()
+
+summary_1930 <- CZ1930 |>
+  st_drop_geometry() |>
+  summarise(
+    n_districts = n(),
+    Total_population = sum(pTot1930, na.rm = TRUE),
+    German_population = sum(pGer1930, na.rm = TRUE),
+    German_share_percentage = (German_population / Total_population)*100)
+
+summary_2011 <- CZ2011 |>
+  st_drop_geometry() |>
+  summarise(
+    n_districts = n(),
+    Total_population = sum(pTot2011, na.rm = TRUE),
+    German_population = sum(pGer2011, na.rm = TRUE),
+    German_share_percentage = (German_population / Total_population)*100)
+```
+
+
+---
+
+## Total population, 1930 & 2011 
+
+```{r}
+kable(summary_1930, digits = 4, caption = "Summary of 1930 data")
+kable(summary_2011, digits = 4, caption = "Summary of 2011 data")
+```
+
+**Population density (per km sq.)**
+
+```{r, out.width = "100%", fig.align = "center"}
+# Population density (per km square)
+summary(CZ1930$pTdens1930)
+summary(CZ2011$pTdens2011)
+# We use log-transformation to show population density 
+# (positive values, large variability for direct color-coding)
+grid.arrange(grobs=list(Dens1930,Dens2011),ncol=1)
+```
+
+---
+
+## German population, 1930 & 2011
+
+```{r, out.width = "100%", fig.align = "center"}
+summary(CZ1930$sGer1930)
+summary(CZ2011$sGer2011)
+grid.arrange(grobs=list(G1930,G2011),ncol=1)
+```
+
+---
+
+* **Discuss aggregated (country-level) population levels and regional distribution for both the total population and German population.**
+
+--- 
+
+# Data & methodology issues
+
+**To evaluate the relative changes in population share of German minority, we face 2 main questions/problems:**
+
+* 1930 and 2011 districts are not compatible.  
+* Is it OK to interpolate population shares directly, or do we have to interpolate population levels first?
+
+--- 
+
+## Problem 1
+
+> The 1930 and 2011 districts/polygons are not directly comparable. Therefore, the 1930 values must first be harmonised to the 2011 geography.
+
+To illustrate Problem 1, we can zoom-in to the Western regions of Czechia:
+
+```{r, out.width = "100%", fig.align = "center"}
+# note how this single ggplot image draws from two different sf-type dataframes
+# CRS compatibility is crucial
+CZ2011 |> 
+  ggplot() +
+  geom_sf(fill = "white", color = "grey30", linewidth = 1) + # 2011 borders
+  geom_sf(data=CZ1930, fill = NA, color = "red", linewidth = 0.1 )+ # 1930 borders
+  coord_sf(xlim = c(12, 13.5), ylim = c(49.5, 50.5))+ # map range
+  theme_minimal()
+```
+
+- The mapping of 1930-to-2011 regions is not hierarchical (such as in the NUTS system).  
+- A single 1930-type region can intersect with 2 or more 2011 districts.  
+- **Area-weighted interpolation** is possible.  
+- However, it **assumes that that population is uniformly distributed within each of the 1930 districts**.  
+- Actual population (cities, other settlements) is spatially uneven, which affects accuracy of the results.  
+- Without higher granularity in data, this cannot be easily solved.  
+- We are interpolating from smaller 1930 regions to larger 2011, which alleviates the problem to some extent (the actual bias depends on empirical data properties).  
+- Our calculations should be interpreted as approximate harmonised values, rather than exact reconstructions.  
+
+--- 
+
+## Problem 2
+
+> Should we interpolate German population ratios/shares, or should we interpolate the observed populations (total, German) and *then* calculate shares from interpolated population values?
+
+* If the underlying data (`Population_total`, `Population_German`) are available, **always** interpolate underlying data firts, and then calucate shares from the interpolation.  
+
+* In **Problem 1**, we assume uniform distribution of the population **within each 1930-district**. Should we choose to interpolate population shares (ratios) directly, we are also assuming that population density is **uniformly distributed across 1930-districts**.  
+
+---- 
+
+## Ilustrative example 
+
+
+> Interpolating shares vs. interpolating counts from smaller to higher-level regions
+
+
+Suppose there are two 1930 districts, `A` and `B`, that together map to the 2011 district `C`.
+
+* Both `A` and `B` contain the same number of minority residents, but district `B` has a much larger total population.  
+
+* The two districts differ in area: district `A` accounts for 40 percent of the target area, while district `B` accounts for 60 percent.  
+
+* District `B` overlaps beyond `C`, but `C` is completely filled by `A` and part of `B`. 
+
+* The rest of `B` (not in `C`) belongs to some district `D` that is not part of our example. 
+
+```{r example-table, echo=FALSE}
+example_data <- tibble(
+  District = c("A", "B","C"),
+  Area = c(40,90,100),
+  Area_in_C = c(40,60,100),
+  Minority = c(100, 100,NA),
+  Population = c(100, 1000,NA),
+  Share = Minority / Population
+)
+
+kable(
+  example_data,
+  digits = 3,
+  caption = "Mapping of districts A and B to C (and D)"
+)
+```
+
+```{r, echo=F, out.width = "100%", fig.align = "center"}
+library(ggplot2)
+library(dplyr)
+library(tibble)
+# Source districts from 1930
+source_districts <- tibble(
+  district = c("A", "B"),
+  xmin = c(0, 4),
+  xmax = c(4, 14),
+  ymin = c(0, 0),
+  ymax = c(4, 4),
+  minority = c(100, 100),
+  population = c(100, 1000),
+  share = minority / population
+)
+
+# Target districts from 2011
+target_districts <- tibble(
+  district = c("C", "D"),
+  xmin = c(0, 10),
+  xmax = c(10, 14),
+  ymin = c(0, 0),
+  ymax = c(4, 4)
+)
+
+# Minimal internal labels
+weights <- tibble(
+  label = c("A: 40 (40% of C)", "B: 60 (60% of C)", "rest of B: 30"),
+  x = c(2, 7, 12),
+  y = c(2, 2, 2)
+)
+
+ggplot() +
+  # 1930 source districts
+  geom_rect(
+    data = source_districts,
+    aes(
+      xmin = xmin, xmax = xmax,
+      ymin = ymin, ymax = ymax,
+      fill = district
+    ),
+    color = "grey30",
+    linewidth = 0.5,
+    alpha = 0.65
+  ) +
+  
+  # 2011 target districts as outlines
+  geom_rect(
+    data = target_districts,
+    aes(
+      xmin = xmin, xmax = xmax,
+      ymin = ymin, ymax = ymax
+    ),
+    fill = NA,
+    color = "black",
+    linewidth = 1.1,
+    linetype = "dashed"
+  ) +
+  
+  # 2011 district labels above plot
+  geom_text(
+    data = target_districts,
+    aes(
+      x = (xmin + xmax) / 2,
+      y = ymax + 0.45,
+      label = district
+    ),
+    fontface = "bold",
+    size = 5
+  ) +
+  
+  # Minimal labels inside rectangles
+  geom_text(
+    data = weights,
+    aes(x = x, y = y, label = label),
+    size = 4.5,
+    fontface = "bold"
+  ) +
+  
+  # Separator between C and D
+  geom_vline(
+    xintercept = 10,
+    linewidth = 0.8,
+    linetype = "dotted"
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      "A" = "#fdae61",
+      "B" = "#abd9e9"
+    )
+  ) +
+  
+  coord_equal(
+    xlim = c(-0.5, 14.5),
+    ylim = c(-0.4, 5.1),
+    expand = FALSE
+  ) +
+  
+  labs(
+    title = "Map of A, B, and C regions",
+    x = NULL,
+    y = NULL
+  ) +
+  
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 14,
+      hjust = 0.5
+    ),
+    plot.subtitle = element_text(
+      size = 11,
+      hjust = 0.5
+    ),
+    legend.position = "none"
+  )
+```
+
+
+
+$\text{The minority share is: } S_i = \frac{M_i}{P_i},$ where \(M_i\) is the minority population and \(P_i\) is the total population in district \(i\).
+
+--- 
+
+<br>
+**Direct interpolation of minority shares from A,B to C**  
+
+If we interpolate the shares directly, we also use direct area-based weights $w_i$, such that $w_A =0.40, w_B = 0.60$, and we obtain:
+
+\[
+\widehat{S}^{(dir)}_C
+=
+w_A \times S_A
++
+w_B \times S_B
+=
+0.4 \times 1.0
++
+0.6 \times 0.1
+=
+0.46.
+\]
+
+The target district `C` is estimated to have a minority share of **46 %**.
+
+
+--- 
+
+
+<br>
+**Interpolating counts first**  
+To aggretate and interpolate count variables, we weight each observation in  `A`, `B` by region's overlap with `C`
+
+ \[
+w_{iC} =
+\frac{a_{iC}}{a_i},
+\]
+
+where:
+
+- \(a_{iC}\) is the overlap area between $i$th district and district \(C\),
+- \(a_i\) is the total area of 1930 district \(i\).
+
+<br>
+Hence, $w_{AC} = 40/40 = 1$ and $w_{BC} = 60/90 = 0.667$.
+
+<br>
+Next, we interpolate the minority and total population counts separately.
+
+First, interpolate the minority count:
+
+$$
+\widehat{M_C} = \sum_{i=1}^N w_{iC}M_i
+= w_{AC} \times M_A + w_{BC} \times M_C
+= 1 \times 100 + 0.667 \times 100 = 167.
+$$
+
+Then interpolate the total population count:
+
+$$
+\widehat{P_C} = \sum_{i=1}^N w_{iC}P_i
+=
+w_{AC} \times P_A + w_{BC} \times P_B = 
+1 \times 100 + 0.667 \times 1000
+= 767.
+$$
+
+Finally, compute the share:
+
+\[
+\widehat{S_C}^{(2step)}
+=
+\frac{\widehat{M_C}}{\widehat{P_C}}
+=
+\frac{167}{767}
+=
+0.2177.
+\]
+
+The count-based interpolated minority share is approximately **21.8 %**.
+
+
+--- 
+
+**Interpretation**
+
+* Direct share interpolation method gives district `A` and district `B` influence according to their area weights only. Same population densities are assumed across 1930-regions.  
+
+* Counts-first method weights account for both area and population sizes (total, minority). Here, we only assume constant population densities within 1930-regions.  
+
+----
+
+# Intersections between 1930 and 2011 regions
+
+Checklist before starting the interpolation (all OK in our sandbox example, not typical for actual empirical data):  
+
+* Polygon (geometry) validity  
+* CRS compatibility  
+* Use planar projection to calculate polygon areas. 
+
+
+> In the `intersections` object, each row (intersected polygon) represents the area shared by one 1930-district and one 2011-district.
+
+```{r intersections, warning=FALSE}
+# for consistency of weight calculations 
+# (1930 and 2011 areas calculated using EPSG 5514)
+CZ1930 <- CZ1930 |> st_transform(5514)
+CZ2011 <- CZ2011 |> st_transform(5514)
+
+intersections <- st_intersection( # two sf objects follow, we select columns
+  CZ1930 |> dplyr::select(id1930,pTot1930,pGer1930,area1930),
+  CZ2011 |> dplyr::select(id2011)
+) |>
+  mutate(
+    area_intersection = (as.numeric(st_area(geometry)))*1e-6, 
+    # calculate area of intersection based on EPSG 5514
+    # convert area to km2 for consistency
+    w_area = area_intersection / area1930) # area1930 in km sq.
+#
+#
+# back to WGS 84
+CZ1930 <- CZ1930 |> st_transform(4326)
+CZ2011 <- CZ2011 |> st_transform(4326)
+# show the intersections object
+intersections
+```
+
+Here,
+
+ \[
+\text{w_area  =  }
+w_{ij} =
+\frac{a_{ij}}{a_i},
+\]
+
+where (following from our example above):
+
+- \(a_{ij}\) is the overlap area between 1930 district \(i\) and 2011 district \(j\),
+- \(a_i\) is the total area of 1930 district \(i\).
+
+Note that we are going to "translate" 1930 districts to 2011 districts (not the ohter way around).
+
+--- 
+
+# Data interpolation
+
+* German population and total population are **counts**.   
+* 1930 data are allocated by area weights to the 2011 data and then summed.  
+
+```{r correct-method}
+intersections_sums <- intersections |>
+  st_drop_geometry() |> 
+  mutate(
+    pTot1930_alloc = pTot1930 * w_area,
+    pGer1930_alloc = pGer1930 * w_area) |> 
+  group_by(id2011) |> # weighted sums: aggregate 1930 data into 2011 regions
+  summarise(
+    pTot1930_est = sum(pTot1930_alloc, na.rm = TRUE),
+    pGer1930_est = sum(pGer1930_alloc, na.rm = TRUE),
+    sGer1930_est = (pGer1930_est / pTot1930_est)*100) |> # in %
+  ungroup() |> 
+  arrange(id2011)
+  
+
+Full_df <- CZ2011 |> 
+  dplyr::select(id2011,sGer2011,pTot2011,pGer2011) |> 
+  left_join(intersections_sums, by = "id2011") |> 
+  mutate(percPointChange = (sGer2011 - sGer1930_est))
+str(Full_df)
+```
+
+--- 
+
+# Map interpolations - Diagnostics
+
+* Check whether population counts are preserved after interpolation 
+
+    - The count-based interpolation (1930 regions - to - 2011 regions) should approximately preserve the original 1930 counts.  
+    - Maps are not perfect, there are some rounding errors, minor historical changes in state borders, split of Czechoslovakia, etc.  
+
+```{r diagnostics-total-preservation}
+diagnostics_totals <- tibble(
+  quantity = c(
+    "Original 1930 total population",
+    "Interpolated 1930 total population",
+    "Original 1930 German population",
+    "Interpolated 1930 German population"
+  ),
+  value = c(
+    sum(CZ1930$pTot1930, na.rm = TRUE),
+    sum(Full_df$pTot1930_est, na.rm = TRUE),
+    sum(CZ1930$pGer1930, na.rm = TRUE),
+    sum(Full_df$pGer1930_est , na.rm = TRUE)
+  )
+)
+
+diagnostics_totals |>
+  mutate(value = round(value, 2)) |>
+  kable(caption = "Total preservation diagnostics")
+```
+
+
+
+* Check coverage of 1930 districts in mapping to 2011 regions
+
+    - For each 1930 district, the sum of allocated area weights should be close to 1  
+    - Again, maps are not ideal, rounding errors, minor changes in international borders, etc. 
+
+```{r diagnostics-coverage}
+coverage_by_1930 <- intersections |>
+  st_drop_geometry() |>
+  group_by(id1930) |>
+  summarise(
+    weight_sum = sum(w_area, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+summary(coverage_by_1930$weight_sum)
+```
+
+--- 
+
+# Maps
+
+## German 1930 population share translated to 2011 districts
+
+```{r , fig.width=8, fig.height=6}
+g1930Interp <- ggplot(Full_df) +
+  geom_sf(aes(fill = sGer1930_est), color = "grey30",linewidth = 0.1) +
+  my_scale +
+  labs(title = "1930: German population share: Overlay of 1930 data \non 2011 LAU1 districts, scale 0% - 100%") +
+  theme_minimal()
+grid.arrange(grobs=list(G1930,g1930Interp),ncol=1)
+```
+
+
+## percentage-point change from 1930 to 2011
+
+```{r, fig.width=8, fig.height=6}
+ggplot(Full_df) +
+  geom_sf(
+    aes(fill = percPointChange),
+    color = "gray30",
+    linewidth = 0.1
+  ) +
+  scale_fill_gradient2(
+    low = "firebrick",
+    mid = "white",
+    high = "steelblue",
+    midpoint = 0,
+    name = "Change\np.p."
+  ) +
+  labs(
+    title = "Changes German population share, 1930 to 2011 (percentage point differences)",
+    subtitle = "1930 values harmonised to 2011 districts"
+  ) +
+  theme_minimal()
+```
+
+# Alternative representations 
+
+> Total population, German minority, 1930 vs 2011, country-level, regional changes
+
+- The percentage point changes plotted above are valid, yet they may not represent well the true level of decline of the German minority presence in Czechia.  
+
+- We may use the comparison of total population relative changes (1930 to 2011, using 2011 regions) and German population relative changes. 
+
+- Note that the **change in total population (country-level) is very small**, unlike the change in German population:
+
+```{r national-comparison, echo=FALSE}
+overall_1930 <- CZ1930 |>
+  st_drop_geometry() |>
+  summarise(
+    year = 1930,
+    Tot_population = sum(pTot1930, na.rm = TRUE),
+    German_population = sum(pGer1930, na.rm = TRUE),
+    share_german = German_population / Tot_population
+  )
+
+overall_2011 <- CZ2011 |>
+  st_drop_geometry() |>
+  summarise(
+    year = 2011,
+    Tot_population = sum(pTot2011, na.rm = TRUE),
+    German_population = sum(pGer2011, na.rm = TRUE),
+    share_german = German_population / Tot_population
+  )
+
+overall_change <- bind_rows(overall_1930, overall_2011) |>
+  mutate(
+    share_german_percent = 100 * share_german
+  )
+
+overall_change |>
+  mutate(across(where(is.numeric), \(x) round(x, 4))) |>
+  kable(caption = "National-level German population share")
+```
+
+<br>
+**Country-level relative changes in population (Total):**
+
+```{r national-change}
+# Change in total population in Czechia: 1930 to 2011, in (%):
+100 * ((overall_2011$Tot_population - overall_1930$Tot_population)/overall_1930$Tot_population)
+```
+
+<br>
+**Country-level relative changes in population (German minority):**
+
+```{r}
+# Change in German population in Czechia: 1930 to 2011, in (%):
+100 * ((overall_2011$German_population - overall_1930$German_population)/overall_1930$German_population)
+```
+
+<br>
+**Plots of regional relative changes in population (Total & German):**
+
+```{r map-change-correct, fig.width=8, fig.height=6}
+Full_df <- Full_df |> 
+  mutate(pchTotPop = 100*((pTot2011-pTot1930_est)/pTot1930_est),
+         pchGerPop = 100*((pGer2011-pGer1930_est)/pGer1930_est))
+
+my_scale4 <- scale_fill_gradient2(
+  low = "firebrick",
+    mid = "white",
+    high = "steelblue",
+    midpoint = 0,
+  limits = c(-100, 120),
+  breaks = c(-100, -60, 0, 60, 120),
+  labels = scales::percent_format(scale = 1, accuracy = 1),
+  name = "Relative change \nin population"
+)
+
+
+RCT <- ggplot(Full_df) +
+  geom_sf(
+    aes(fill = pchTotPop),
+    color = "gray30",
+    linewidth = 0.1
+  ) +
+  my_scale4 +
+  labs(
+    title = "Relative changes in total population, 1930 to 2011 (%)",
+    subtitle = "1930 values harmonised to 2011 districts"
+  ) +
+  theme_minimal()
+
+RCG <- ggplot(Full_df) +
+  geom_sf(
+    aes(fill = pchGerPop),
+    color = "gray30",
+    linewidth = 0.1
+  ) +
+ my_scale4 +
+  labs(
+    title = "Relative changes in German population, 1930 to 2011 (%)",
+    subtitle = "1930 values harmonised to 2011 districts"
+  ) +
+  theme_minimal()
+
+grid.arrange(grobs=list(RCT,RCG),ncol=1)
+
+# Relative share of German population 1930 vs 2011 (using 2011 regions)
+grid.arrange(grobs=list(g1930Interp,G2011),ncol=1)
+```
+
+
+# Assumptions and limitations
+
+The main limiting assumption is **uniform spatial distribution within 1930-source regions**. 
+
+A better approach would use auxiliary information, for example:
+
+- settlement points,
+- built-up areas,
+- historical cadastral data (land use information),
+- elevation or terrain,
+- gridded population data.
+
+This would allow for improved weighted interpolation, where population is allocated according to plausible settlement locations rather than uniformly by the 1930-region area.
+
