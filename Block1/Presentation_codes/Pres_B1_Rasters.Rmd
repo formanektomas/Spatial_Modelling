@@ -1,0 +1,1210 @@
+---
+title: "rasters_presentation"
+author: " "
+date: " "
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install spDataLarge from the geocompx R-universe if not available
+if (!requireNamespace("spDataLarge", quietly = TRUE)) {
+  install.packages(
+    "spDataLarge",
+    repos = "https://geocompx.r-universe.dev"
+  )
+}
+library(stars)
+library(mapview)
+library(h3jsr)
+library(osmdata)
+library(RCzechia)
+library(grid)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(patchwork)
+library(viridis)
+library(terra)
+library(exactextractr)
+library(spDataLarge)
+```
+
+
+```{r}
+# create a raster object with three layers
+r <- rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=20, ymax=60)
+set.seed(123456)
+values(r) <- rnorm(ncell(r))
+r2 <- r * r
+r3  <- r > 0
+s <- c(r, r2, r3)
+names(s)[c(1:3)] <- c("z = rnorm(ncell(r))", "z^2 values","z>0 T/F classification")
+s
+plot(s,nc=3)
+```
+
+```{r}
+
+# ------------------------------------------------------------
+# 1. Create a 5x5 raster-like grid
+# ------------------------------------------------------------
+
+set.seed(123)
+
+n <- 5
+
+raster_df <- expand.grid(
+  col = 1:n,
+  row = 1:n
+) |>
+  as_tibble() |>
+  arrange(row, col) |>
+  mutate(
+    cell_id = row_number(),
+    value = c(
+      92, 55, 48, 21, 76,
+      58, 70, NA, 37, 64,
+      NA, 12, 94, 11, 80,
+      36, 83,  4, 88, 45,
+      20, NA, 67, 73,  9
+    )
+  )
+
+# Reverse row order for plotting, so row 1 appears at the top
+raster_df <- raster_df |>
+  mutate(
+    y = n - row + 1
+  )
+
+# ------------------------------------------------------------
+# 2. Common plot theme
+# ------------------------------------------------------------
+
+grid_theme <- theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 18,
+      hjust = 0,
+      face = "plain"
+    ),
+    plot.margin = margin(10, 15, 10, 15)
+  )
+
+# ------------------------------------------------------------
+# 3. Plot A: Cell IDs
+# ------------------------------------------------------------
+
+p_ids <- ggplot(raster_df, aes(x = col, y = y)) +
+  geom_tile(
+    fill = "white",
+    color = "black",
+    linewidth = 0.6
+  ) +
+  geom_text(
+    aes(label = cell_id),
+    size = 6
+  ) +
+  coord_equal() +
+  labs(title = "A. Cell IDs") +
+  grid_theme
+
+# ------------------------------------------------------------
+# 4. Plot B: Cell values
+# ------------------------------------------------------------
+
+p_values <- ggplot(raster_df, aes(x = col, y = y)) +
+  geom_tile(
+    fill = "white",
+    color = "black",
+    linewidth = 0.6
+  ) +
+  geom_text(
+    aes(label = ifelse(is.na(value), "NA", value)),
+    size = 6
+  ) +
+  coord_equal() +
+  labs(title = "B. Cell values") +
+  grid_theme
+
+# ------------------------------------------------------------
+# 5. Plot C: Colored values
+# ------------------------------------------------------------
+
+p_colored <- ggplot(raster_df, aes(x = col, y = y, fill = value)) +
+  geom_tile(
+    color = NA
+  ) +
+  scale_fill_gradient2(
+    low = "#0b7fb3",
+    mid = "#f7f7f7",
+    high = "#d4002a",
+    midpoint = 50,
+    na.value = "grey30",
+    guide = "none"
+  ) +
+  coord_equal() +
+  labs(title = "C. Data visualization") +
+  grid_theme
+
+# ------------------------------------------------------------
+# 6. Combine panels
+# ------------------------------------------------------------
+
+p_ids + p_values + p_colored +
+  plot_layout(ncol = 3)
+```
+
+
+
+
+```{r}
+library(terra)
+r <- rast(nrows = 5, ncols = 5, xmin = 0, xmax = 5, ymin = 0, ymax = 5)
+r
+values(r) <- 1:ncell(r)
+
+ncell(r)
+values(r)
+
+xyFromCell(r, 1)
+xyFromCell(r, 13)
+xyFromCell(r, 25)
+
+cellFromXY(r, cbind(x = 2.5, y = 2.5))
+
+# ------------------------------------------------------------
+# 1. Create a simple 5x5 raster
+# ------------------------------------------------------------
+
+r <- rast(
+  nrows = 5,
+  ncols = 5,
+  xmin = 0, xmax = 5,
+  ymin = 0, ymax = 5,
+  crs = "local"
+)
+
+values(r) <- 1:ncell(r)
+
+# ------------------------------------------------------------
+# 2. Create data frame with cell IDs and xy coordinates
+# ------------------------------------------------------------
+
+cell_ids <- 1:ncell(r)
+
+cell_df <- as_tibble(xyFromCell(r, cell_ids)) |>
+  mutate(
+    cell_id = cell_ids,
+    row = rowFromCell(r, cell_ids),
+    col = colFromCell(r, cell_ids),
+    xy_label = paste0("(", x, ", ", y, ")")
+  )
+
+cell_df
+
+# ------------------------------------------------------------
+# 3. Common theme
+# ------------------------------------------------------------
+
+grid_theme <- theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 18,
+      hjust = 0.5
+    ),
+    plot.margin = margin(10, 15, 10, 15)
+  )
+
+# ------------------------------------------------------------
+# 4. Plot A: Cell IDs
+# ------------------------------------------------------------
+
+p_ids <- ggplot(cell_df, aes(x = x, y = y)) +
+  geom_tile(
+    width = 1,
+    height = 1,
+    fill = "white",
+    color = "black",
+    linewidth = 0.6
+  ) +
+  geom_text(
+    aes(label = cell_id),
+    size = 6
+  ) +
+  coord_equal() +
+  labs(title = "A. Cell IDs") +
+  grid_theme
+
+# ------------------------------------------------------------
+# 5. Plot B: Cell-centre xy coordinates
+# ------------------------------------------------------------
+
+p_xy <- ggplot(cell_df, aes(x = x, y = y)) +
+  geom_tile(
+    width = 1,
+    height = 1,
+    fill = "white",
+    color = "black",
+    linewidth = 0.6
+  ) +
+  geom_text(
+    aes(label = xy_label),
+    size = 2
+  ) +
+  coord_equal() +
+  labs(title = "B. Cell-centre coordinates") +
+  grid_theme
+
+# ------------------------------------------------------------
+# 6. Combine plots
+# ------------------------------------------------------------
+p_ids + p_xy
+```
+
+---
+
+## Hexagonal tessellation and SpatVector
+
+```{r}
+set.seed(123456)
+# Example raster
+r <- rast(nrows = 100,ncols = 100,
+  xmin = 0, xmax = 100,ymin = 0, ymax = 100,
+  crs = "local")
+r
+
+values(r) <- rnorm(ncell(r),mean=0,sd=2) + 
+  seq(from=1,to=5,length.out=ncell(r))
+
+# Create hexagonal polygons over raster extent
+hex <- tessellate(r,size = 10,type = "hexagon")
+hex
+plot(r)
+plot(hex, add = TRUE, border = "red",lwd=2)
+
+hex_mean <- extract(r,hex,fun = mean,na.rm = TRUE)
+hex_min <- extract(r,hex,fun = min,na.rm = TRUE)
+hex$mean_value <- hex_mean[, 2]
+hex$min_value <- hex_min[, 2]
+hex
+plot(hex, "mean_value")
+
+```
+
+--- 
+
+## Subsetting values
+
+
+```{r}
+
+r <- rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=20, ymax=60)
+set.seed(123456)
+values(r) <- rnorm(ncell(r))
+r2 <- r * r
+r3  <- r > 0
+s <- c(r, r2, r3)
+names(s)[c(1:3)] <- c("z = rnorm(ncell(r))", "z^2 values","z>0 T/F classification")
+s
+plot(s,nc=3)
+
+# subsetting
+r[1]
+r[1,1]
+s[1,1,1]
+
+s[1,1]
+s[1,]
+s[]
+
+s[1,1,1] <- NA # sets the first element to "NA"
+plot(s,nc=3)
+
+s[1,1] <- NA # compare with the previous command
+plot(s,nc=3)
+
+s[1,1] <- c(0.5,0.25,TRUE) 
+plot(s,nc=3)
+```
+
+
+```{r}
+# spatial subsetting
+xyFromCell(r,15)
+id <- cellFromXY(r, matrix(c(-118.5,54), ncol =2))
+id
+r[id]
+r[id] <- 1
+
+
+# For arrays
+s[[3]] |> xyFromCell(50)
+id <- cellFromXY(s[[3]], matrix(c(-83.5, 42), ncol =2))
+id # cell 50 in layer 3
+s[[3]][50]
+
+# The above commands retrieve values from cells. For spatial outpus, use:
+r_subset <- r[1:20, drop = FALSE]
+r_subset
+plot(r_subset)
+
+r3x3 <- r # 3x3 subset of r
+terra::values(r3x3) <- FALSE
+r3x3[c(1:3,11:13,21:23)] <- TRUE
+r2_3x3 <- mask(r2,r3x3)
+s2 <- c(r,r2,r3x3,r2_3x3)
+plot(s2,nc=4)
+
+# compare to NA use
+r3x3 <- r # 3x3 subset of r
+terra::values(r3x3) <- NA
+r3x3[c(1:3,11:13,21:23)] <- TRUE
+r2_3x3 <- mask(r2,r3x3)
+s2 <- c(r,r2,r3x3,r2_3x3)
+plot(s2,nc=4)
+s3 <- c(r2,r3x3,r2_3x3)
+names(s3)[c(1:3)] <- c("z^2 values","3 x 3 subset","masked values")
+plot(s3,nc=3)
+
+# another spatial subset
+r3subset <- terra::ifel(r3, TRUE, NA)
+r2_spatial_subset <- mask(r2,r3subset)
+s4 <- c(r2,r3,r3subset,r2_spatial_subset)
+names(s4)[c(1:4)] <- c("z^2 values","z>0 T/F classification", "subset of TRUE","masked values")
+plot(s4,nc=4)
+# inverse=TRUE switches the masking output
+r2_spatial_subset_inv <- mask(r2,r3subset, inverse = TRUE)
+s4 <- c(r2,r3,r3subset,r2_spatial_subset_inv)
+names(s4)[c(1:4)] <- c("z^2 values","z>0 T/F classification", "subset of TRUE","inverse masked output")
+plot(s4,nc=4)
+```
+
+--- 
+
+## Combining rasters: mosaic()
+
+```{r}
+# Combine adjacent (and maybe partially overlapping) rasters using {terra:mosaic()}
+# - say, we download satellite photographs for analysis, yet wee need to combine
+#   them into one file for subsequent analysis:
+#
+# terra help-based example:
+# ?terra::mosaic
+x <- rast(xmin=-110, xmax=-60, ymin=40, ymax=70, res=1, vals=1)
+y <- rast(xmin=-95, xmax=-45, ymax=60, ymin=30, res=1, vals=2)
+z <- rast(xmin=-80, xmax=-30, ymax=50, ymin=20, res=1, vals=3)
+# x,y,z are 3 different rasters, partly overlapping, 
+# "observed" values are also different (1,2,3)
+m1 <- mosaic(x, y, z, fun="mean") # fun="mean" is the default setting
+m2 <- mosaic(x, y, z, fun="blend") # fun="blend" is the smoother
+m3 <- c(m1,m2)
+names(m3)[c(1:2)] <- c("mean","blend")
+plot(m3,nc = 2,mar = c(2, 2, 2, 4)) 
+# note how values in overlapping areas are aggregated
+
+```
+
+
+--- 
+
+
+## Local operations
+
+```{r}
+# NDVI
+multi_raster_file <- system.file("raster/landsat.tif", package = "spDataLarge")
+multi_rast <- rast(multi_raster_file)
+plot(multi_rast)
+multi_rast
+multi_rast <- project(multi_rast, "epsg:4326")
+names(multi_rast)[c(1:4)] <- c("Blue", "Green","Red","NIR")
+
+# https://www.usgs.gov/faqs/how-do-i-use-a-scale-factor-landsat-level-2-science-products
+
+# https://www.usgs.gov/faqs/what-are-band-designations-landsat-satellites 
+
+multi_rast <- (multi_rast * 0.0000275) - 0.2
+
+summary(values(multi_rast))
+
+# Values now should be in a range between 0 and 1. 
+# This is not the case here, probably due to the presence of clouds, snow cover, etc. 
+# Fix negative values for RGB pictures (photos)
+photoRast <- multi_rast
+photoRast[photoRast < 0] = 0
+
+plot(photoRast)
+
+# Color image can be assembled from the RGB layers
+plotRGB(
+  photoRast,
+  r = 3, # layer 3 as red
+  g = 2, # layer 2 as green
+  b = 1, # layer 1 as blue
+  stretch = "lin",
+  mar = c(2, 2, 3, 2),
+  axes = TRUE,
+  main = "Landsat RGB composite"
+)
+
+# NDVI calculation using the R and NIR layers
+ndviFN <- function(nir, red){
+  (nir - red) / (nir + red)
+}
+
+ndvi_rast = lapp(multi_rast[[c(4, 3)]], fun = ndviFN)
+
+names(ndvi_rast) <- "NDVI"
+
+# Optional: keep values within theoretical NDVI range
+ndvi_rast <- clamp(
+  ndvi_rast,
+  lower = -1,
+  upper = 1,
+  values = TRUE
+)
+
+# Red-white-green divergent palette
+ndvi_pal <- colorRampPalette(
+  c("red", "white", "darkgreen")
+)(100)
+
+plot(
+  ndvi_rast,
+  col = ndvi_pal,
+  main = "NDVI",
+  axes = TRUE
+)
+
+#-------------------------------------------------------------------------------
+# 
+# Prepare NDVI-based classification and plot
+#
+# NDVI <= 0        Water, clouds, snow, shadows
+# 0 < NDVI <= 0.1  Bare soil, built-up land
+# 0.1-0.3          Sparse/stressed vegetation
+# 0.3-0.5          Moderate vegetation
+# NDVI > 0.5       Dense/healthy vegetation
+
+classify_ndvi <- function(ndvi) {
+  # Classification matrix:
+  # from, to, class_id
+  rcl <- matrix(
+    c(-Inf, 0.0, 1,
+       0.0, 0.1, 2,
+       0.1, 0.3, 3,
+       0.3, 0.5, 4,
+       0.5, Inf, 5),
+    ncol = 3,
+    byrow = TRUE)
+    ndvi_class <- classify(
+    ndvi,
+    rcl = rcl,
+    include.lowest = TRUE,
+    right = TRUE)
+  ndvi_class <- as.factor(ndvi_class)
+  levels(ndvi_class) <- data.frame(
+    value = 1:5,
+    NDVI_class = c(
+      "Water, clouds, snow, shadows",
+      "Bare soil, built-up land",
+      "Sparse or stressed vegetation",
+      "Moderate vegetation",
+      "Dense, healthy vegetation"))
+  names(ndvi_class) <- "NDVI_class"
+  ndvi_class
+}
+
+ndvi_cols <- c(
+  "Water, clouds, snow, shadows" = "red",
+  "Bare soil, built-up land" = "grey80",
+  "Sparse or stressed vegetation" = "khaki",
+  "Moderate vegetation" = "yellowgreen",
+  "Dense, healthy vegetation" = "darkgreen"
+)
+
+ndvi_class <- classify_ndvi(ndvi_rast)
+ndvi_class
+
+plot(ndvi_class,col = ndvi_cols,main = "NDVI classification")
+```
+
+## Focal operations
+
+```{r}
+
+# ------------------------------------------------------------
+# 1. Create a small 6 x 6 raster matching the teaching figure
+# ------------------------------------------------------------
+set.seed(123456)
+vals <- matrix(rnorm(36,mean = 0,sd=3),nrow = 6,byrow = TRUE)
+
+r <- rast(
+  nrows = 6,
+  ncols = 6,
+  xmin = 0, xmax = 6,
+  ymin = 0, ymax = 6,
+  crs = "local"
+)
+
+# terra fills cells from upper-left to lower-right
+values(r) <- vals # as.vector(t(vals))
+
+# ------------------------------------------------------------
+# 2. Apply 3 x 3 focal minimum
+# ------------------------------------------------------------
+
+r_focal <- focal(r,w = matrix(1, nrow = 3, ncol = 3),fun = max)
+
+# ------------------------------------------------------------
+# 3. Convert rasters to data frames for ggplot
+# ------------------------------------------------------------
+
+
+r_to_df <- function(x, x_offset = 0, panel = "input") {
+  
+  cell_ids <- seq_len(ncell(x))
+  
+  nr <- dim(x)[1]
+  
+  rc <- as.data.frame(rowColFromCell(x, cell_ids))
+  names(rc) <- c("row_id", "col_id")
+  
+  vals <- as.data.frame(values(x))
+  names(vals) <- "value"
+  
+  data.frame(
+    cell = cell_ids,
+    rc,
+    vals
+  ) |>
+    mutate(
+      x_plot = col_id + x_offset,
+      y_plot = nr - row_id + 1,
+      label = ifelse(is.na(value), "NA", ""),
+      panel = panel
+    )
+}
+
+df_input <- r_to_df(r, x_offset = 0, panel = "input")
+df_output <- r_to_df(r_focal, x_offset = 6.6, panel = "output")
+
+df_all <- bind_rows(df_input, df_output)
+
+# Optional: common colour limits for both rasters
+value_limits <- range(df_all$value, na.rm = TRUE)
+
+# ------------------------------------------------------------
+# 4. Plot the schematic figure
+# ------------------------------------------------------------
+
+ggplot(df_all, aes(x = x_plot, y = y_plot)) +
+  
+  # Raster cells
+  geom_tile(
+    aes(fill = value),
+    color = "grey45",
+    linewidth = 0.35,
+    width = 1,
+    height = 1
+  ) +
+  
+  # Only print NA labels
+  geom_text(
+    data = df_all |> filter(is.na(value)),
+    aes(label = label),
+    size = 4,
+    color = "black"
+  ) +
+  
+  # Orange 3 x 3 focal window on the input raster
+  annotate(
+    "rect",
+    xmin = 0.5, xmax = 3.5,
+    ymin = 3.5, ymax = 6.5,
+    color = "orange",
+    fill = NA,
+    linewidth = 1.4
+  ) +
+  
+  # Orange centre cell on input raster
+  annotate(
+    "rect",
+    xmin = 1.5, xmax = 2.5,
+    ymin = 4.5, ymax = 5.5,
+    color = "orange",
+    fill = NA,
+    linewidth = 1.1
+  ) +
+  
+  # Orange output cell receiving the focal value
+  annotate(
+    "rect",
+    xmin = 8.1, xmax = 9.1,
+    ymin = 4.5, ymax = 5.5,
+    color = "orange",
+    fill = NA,
+    linewidth = 1.1
+  ) +
+  
+  # Arrow from input window to output value
+  annotate(
+    "segment",
+    x = 3.55, xend = 8.05,
+    y = 5.0, yend = 5.0,
+    linewidth = 0.7,
+    color = "red3",
+    arrow = arrow(length = unit(0.25, "cm"))
+  ) +
+  
+  # Viridis colour scale
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = value_limits,
+    na.value = "grey75"
+  ) +
+  
+  coord_equal(
+    xlim = c(0.3, 13.0),
+    ylim = c(0.3, 6.7),
+    expand = FALSE
+  ) +
+  
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  )
+```
+
+---
+
+## Zonal operations (Zion park example revisited)
+
+```{r}
+z <- terra::zonal(ndvi_rast, ndvi_class, fun = "mean")
+class(z)
+z
+```
+
+
+--- 
+
+## Global operations 
+
+```{r}
+# project for simple distance calc. (m)
+ndvi_proj <- project(ndvi_class, "EPSG:32612")
+
+set.seed(12345)
+spots <- spatSample(
+  ndvi_proj,
+  size = 5,
+  method = "random",
+  as.points = TRUE,
+  na.rm = TRUE,
+  values = FALSE
+)
+spots$id <- 1:nrow(spots)
+spots
+
+dist_to_spot <- terra::distance(ndvi_proj, spots,method="geo",rasterize=FALSE)
+# Convert to kilometres if CRS units are metres
+dist_to_spot <- dist_to_spot / 1000
+names(dist_to_spot) <- "km distance to nearest spot"
+
+# Original raster layer with random spots
+plot(
+  ndvi_proj,
+  main = "NDVI categorization"
+)
+
+points(
+  spots,
+  pch = 21,
+  bg = "red",
+  col = "black",
+  cex = 1.5
+)
+
+text(
+  crds(spots),
+  labels = spots$id,
+  pos = 3,
+  cex = 0.9
+)
+
+# Distance to nearest spot
+plot(
+  dist_to_spot,
+  main = "Distance to nearest spot (km)"
+)
+
+points(
+  spots,
+  pch = 21,
+  bg = "red",
+  col = "black",
+  cex = 1.5
+)
+
+text(
+  crds(spots),
+  labels = spots$id,
+  pos = 3,
+  cex = 0.9
+)
+
+```
+
+
+## Extent harmonization
+
+```{r}
+set.seed(1234567)
+
+r <- rast(
+  nrows = 6,
+  ncols = 6,
+  xmin = 0, xmax = 6,
+  ymin = 0, ymax = 6,
+  crs = "local"
+)
+
+values(r) <- rnorm(ncell(r))
+
+# 2. Extend raster
+
+# extend(r, c(1, 2)) adds:
+# 1 row above and below
+# 2 columns left and right
+r_ext <- extend(r, c(1, 2))
+plot(r_ext) # note the NA values
+
+try(
+  r3 <- r + r_ext
+)
+
+r_new = extend(r, r_ext)
+r_sum <- r_new + r_ext
+r_sum
+
+# ------------------------------------------------------------
+# 3. Helper function: convert raster to plotting dataframe
+# ------------------------------------------------------------
+
+r_to_df <- function(x, x_offset = 0, y_offset = 0, panel = "raster") {
+  
+  cell_ids <- seq_len(ncell(x))
+  
+  nr <- dim(x)[1]
+  
+  rc <- as.data.frame(rowColFromCell(x, cell_ids))
+  names(rc) <- c("row_id", "col_id")
+  
+  vals <- as.data.frame(values(x))
+  names(vals) <- "value"
+  
+  data.frame(
+    cell = cell_ids,
+    rc,
+    vals
+  ) |>
+    mutate(
+      x_plot = col_id + x_offset,
+      y_plot = nr - row_id + 1 + y_offset,
+      panel = panel
+    )
+}
+
+# ------------------------------------------------------------
+# 4. Convert original and extended rasters to data frames
+# ------------------------------------------------------------
+
+gap <- 3
+
+# Center the smaller original raster vertically relative to the extended raster
+y_offset_original <- (nrow(r_ext) - nrow(r)) / 2
+
+df_r <- r_to_df(
+  r,
+  x_offset = 0,
+  y_offset = y_offset_original,
+  panel = "original"
+)
+
+df_ext <- r_to_df(
+  r_ext,
+  x_offset = ncol(r) + gap,
+  y_offset = 0,
+  panel = "extended"
+)
+
+df_all <- bind_rows(df_r, df_ext)
+
+# Common color scale for both rasters
+value_limits <- range(df_all$value, na.rm = TRUE)
+
+# ------------------------------------------------------------
+# 5. Plot original and extended raster side by side
+# ------------------------------------------------------------
+
+ggplot(df_all, aes(x = x_plot, y = y_plot)) +
+  geom_tile(
+    aes(fill = value),
+    color = "grey25",
+    linewidth = 0.55,
+    width = 1,
+    height = 1
+  ) +
+  scale_fill_viridis_c(
+    limits = value_limits,
+    na.value = "grey75"
+  ) +
+  coord_equal(
+    xlim = c(0.5, ncol(r) + gap + ncol(r_ext) + 0.5),
+    ylim = c(0.5, nrow(r_ext) + 0.5),
+    expand = FALSE
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(20, 20, 20, 20)
+  )
+```
+
+---
+
+## Aggregation example
+
+```{r}
+# Digital elevation model (DEM) of the Mongón study area.
+mongon <- rast(system.file("raster/dem.tif", package = "spDataLarge"))
+mongon_agg = aggregate(mongon, fact = 6, fun = mean)
+# White to blue palette
+pal_white_blue <- colorRampPalette(c("white", "darkblue"))(100)
+plot(mongon, col = pal_white_blue,main = "Mongón elevation")
+plot(mongon_agg, col = pal_white_blue,main = "Mongón elevation aggregated")
+
+```
+
+
+--- 
+
+## Resampling example
+
+```{r}
+r <- rast(nrows=3, ncols=3, xmin=0, xmax=10, ymin=0, ymax=10)
+values(r) <- 1:ncell(r)
+s <- rast(nrows=25, ncols=30, xmin=1, xmax=11, ymin=-1, ymax=11)
+x <- resample(r, s, method="bilinear")
+plot(r, col = pal_white_blue,main = "Original raster")
+plot(x, col = pal_white_blue,main = "Resampled raster")
+
+```
+
+
+--- 
+
+## Raster - vector interactions 
+
+```{r}
+CZProfile <- RCzechia::vyskopis(format="actual",cropped = F)
+CZProfile
+# get Czechia state boundaries
+CZbound <- RCzechia::republika(resolution = "low")
+#
+# plot raster
+plot(CZProfile)
+plot(CZbound,
+     border = "red",
+     col = NA,
+     add = TRUE)
+#
+# crop raster image (to a bounding box of CZ borders)
+cropped <- terra::crop(CZProfile, CZbound) # crop raster to the bbox of polygon
+#
+# plot cropped raster
+plot(cropped)
+plot(CZbound,
+     border = "red",
+     col = NA,
+     add = TRUE)
+#
+# mask to a defined polygon boundary (drop rest)
+masked <- terra::mask(cropped, CZbound)
+#
+# plot masked raster
+plot(masked)
+#
+inv_mask <- terra::mask(cropped, CZbound, inverse = TRUE)
+#
+# plot masked raster
+plot(inv_mask)
+
+```
+
+
+## Raster data extraction
+
+```{r}
+set.seed(2345)
+CZspots <- spatSample(
+  masked,
+  size = 5,
+  method = "random",
+  as.points = TRUE,
+  na.rm = TRUE,
+  values = FALSE
+)
+plot(masked,main = "CZ elevation")
+points(CZspots,pch = 21,bg = "red",col = "black",cex = 1.5)
+elevation <- terra::extract(masked, CZspots)
+```
+
+## D5 elevation plot.
+
+
+```{r}
+
+sample_every_m <- 250
+simplify_tolerance_m <- 300
+
+# If D5 contains many very short pieces such as ramps/crossings,
+# increase this, e.g. 500 or 1000.
+min_part_length_m <- 500
+
+# ------------------------------------------------------------
+# 1. Define bounding box
+# ------------------------------------------------------------
+
+# Larger region around western / central Czechia
+# You can also use getbb("Czech Republic"), but a smaller bbox is faster.
+bbox_d5 <- c(
+  xmin = 12.3,
+  ymin = 49.4,
+  xmax = 15.0,
+  ymax = 50.3
+)
+
+# ------------------------------------------------------------
+# 2. Query OSM for D5 motorway
+# ------------------------------------------------------------
+
+try(osm_d5 <- opq(bbox = bbox_d5) |>
+  add_osm_feature(key = "highway", value = "motorway") |>
+  add_osm_feature(key = "ref", value = "D5") |>
+  osmdata_sf()
+)
+
+# ------------------------------------------------------------
+# 3. Extract line geometries
+# ------------------------------------------------------------
+try(D5_osm <- osm_d5$osm_lines)
+# ------------------------------------------------------------
+# If osm database is not responding (heavy traffic is common)
+# you can read the D5_osm next 
+# (the OSM dowload has 4MB+, so just the linestring are stored)
+D5_osm <- st_read("data/D5_osm.gpkg")
+# ------------------------------------------------------------
+
+
+# Quick check
+names(D5_osm)
+nrow(D5_osm)
+st_geometry_type(D5_osm)
+
+
+D5_osm_main <- D5_osm |>
+  st_transform(5514) |>
+  st_make_valid() |>
+  summarise() |>
+  st_line_merge()
+
+
+D5_geom <- D5_osm_main |>
+  st_geometry() |>
+  st_union() |>
+  st_collection_extract("LINESTRING") |>
+  st_line_merge() 
+
+D5 <- st_sf(
+  geometry = st_cast(D5_geom, "LINESTRING")
+) |>
+  mutate(
+    part_id = row_number(),
+    part_len_m = as.numeric(st_length(geometry))
+  ) |>
+  filter(part_len_m >= min_part_length_m)
+# 
+D5 <- D5[2,] # direction: Border >> Prague
+D5wgs84 <- D5 |> 
+  st_transform(4326)
+
+plot(masked,main = "CZ elevation")
+lines(D5wgs84,col = "red",lwd = 2)
+
+
+# ------------------------------------------------------------
+# Sample points every 250 m along the smoothed D5 line
+# ------------------------------------------------------------
+
+D5_length_m <- as.numeric(st_length(D5))
+
+dist_m <- seq(0, D5_length_m, by = sample_every_m)
+
+# Include final endpoint
+if (max(dist_m) < D5_length_m) {
+  dist_m <- c(dist_m, D5_length_m)
+}
+
+D5_points_geom <- st_line_sample(
+  D5,
+  sample = dist_m / D5_length_m
+)
+
+D5_points <- st_sf(
+  id = seq_along(dist_m),
+  dist = dist_m,
+  dist_km = dist_m / 1000,
+  geometry = st_cast(D5_points_geom, "POINT")
+)
+
+
+# ------------------------------------------------------------
+# 6. Extract elevation from raster object masked
+# ------------------------------------------------------------
+
+# Transform points to raster CRS
+D5_points_raster_crs <- st_transform(D5_points, crs(masked))
+
+# Extract raster values
+D5_elev <- terra::extract(
+  masked,
+  terra::vect(D5_points_raster_crs)
+)
+
+# Use the first raster value column returned by terra::extract()
+elev_col <- setdiff(names(D5_elev), "ID")[1]
+
+D5_points$elevation <- D5_elev[[elev_col]]
+
+
+# ------------------------------------------------------------
+# 7. Plot map check
+# .. you can see that the simplification is far from perfect,
+#    however, this should not have major consequences for the
+#    elevation plot.
+# ------------------------------------------------------------
+
+ggplot() +
+  geom_sf(data = D5, colour = "red", linewidth = 1) +
+  geom_sf(data = D5_points, colour = "black", size = 0.4) +
+  labs(
+    title = "D5 highways"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+# ------------------------------------------------------------
+# 8. Plot elevation profile
+# ------------------------------------------------------------
+
+D5_points |>
+  arrange(dist_km) |>
+  ggplot(aes(x = dist_km, y = elevation)) +
+  geom_line(linewidth = 0.8, colour = "steelblue") +
+  labs(
+    x = "Distance along D5, from state border (left) to Prague (right), in km",
+    y = "Elevation",
+    title = "Elevation profile of the D5 highway in Czechia"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+
+## elevation to H3 (Uber) hexagons, level 6
+
+
+```{r}
+# prepare H3 hexagonss
+CZ_buff <- CZbound %>% 
+  st_transform(crs = 3587) %>% 
+  st_buffer(dist = 800) %>% 
+  st_transform(crs = 4326)
+  
+hex_ids <- h3jsr::polygon_to_cells(CZ_buff, res = 6)
+hex_sf <- h3jsr::cell_to_polygon(hex_ids, simple = F)
+hex_sf <- st_transform(hex_sf, st_crs(CZbound))
+hex_sf <- hex_sf[st_intersects(hex_sf, CZbound, sparse = F), ]
+hex_sf <- st_intersection(hex_sf, CZbound)
+plot(hex_sf[,1])
+#
+hex_sf$elevation <- exactextractr::exact_extract( # faster than terra::extract()
+  x = masked, # source, masked raster with CZ profile
+  y = hex_sf, # target, sf polygons 
+  fun = "mean", # calculation of average built-up - can be used for air pollution, etc.
+  weights = "area",
+  coverage_area = TRUE,
+  progress = FALSE # hide console progress visualization
+) 
+
+## elevation to H3 grid
+ggplot(data = hex_sf, aes(fill = elevation, label = round(elevation))) +
+  geom_sf(lwd = 1/3) +
+  scale_fill_viridis_c(
+    name = "Terrain \nprofile \nH3 lev.6 \n(2321 h.)"
+  ) +
+  theme(
+    axis.title = element_blank(),
+    plot.caption = element_text(face = "italic"))
+```
+
+
+
+## Rasterization and vectorization
+
+
+```{r}
+# Rasterization
+cycleHire <- spData::cycle_hire_osm
+mapview::mapview(cycleHire)
+cycleHire_projected <- st_transform(cycleHire, "EPSG:27700")
+raster_template <- rast(ext(cycleHire_projected), resolution = 1000,
+                       crs = crs(cycleHire_projected))
+# presence/absence
+ch_raster1 <- rasterize(cycleHire_projected, raster_template)
+# different cycle hire locations have different numbers of bicycles 
+# described by the capacity variable
+# -> calculate total capacity in each grid cell 
+ch_raster2 <- rasterize(cycleHire_projected, raster_template, 
+                       field = "capacity", fun = sum, na.rm = TRUE)
+#
+ch_raster1a <- project(ch_raster1, "epsg:4326")
+ch_raster2a <- project(ch_raster2, "epsg:4326")
+#
+mapview::mapview(ch_raster1a,legend=FALSE)
+mapview::mapview(ch_raster2a,col.regions = viridisLite::viridis)
+
+
+# Vectorization
+CZcontour <- as.contour(masked)
+CZcontour
+CZcontour_sf <- st_as_sf(CZcontour)
+CZcontour_sf
+# Contour plot
+plot(masked)
+lines(CZcontour)
+# Other version of the plot
+br <- c(0, 300, 600,900,1200,1604)
+plot(masked, breaks=br)
+lines(as.contour(masked, levels=br))
+
+```
