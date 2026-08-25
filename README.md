@@ -37,6 +37,11 @@ University of Economics, Prague
 + Raster-vector interactions  
     + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector){:target="_blank"}  
 
+--- 
+
+
+### Block 2: Spatial networks
+
 **Graph represeentations of spatial data**  
 + Creating map-based graphs (connectivity, distance-based)   
 + Centrality indices: node/edge importance  
@@ -47,9 +52,10 @@ University of Economics, Prague
 + Urbanistic applications (space syntax analysis)   
 + [Ecology](https://r.geocompx.org/eco){:target="_blank"}   
 
+
 --- 
 
-### Block 2: Geostatistcs  
+### Block 3: Geostatistcs  
 
 + Descriptive statistics: stochastic spatial processes, covarigram, (semi)variogram
 + Neighbors: definitions  
@@ -62,7 +68,7 @@ University of Economics, Prague
 
 --- 
 
-### Block 3: Spatial regression models  
+### Block 4: Spatial regression models  
 
 **Models for cross-sectional data**  
 + Spatial regression models: taxonomy, marginal effects, diagnostics (stability with respect to spatial structure/adjacency)  
@@ -81,7 +87,7 @@ University of Economics, Prague
 
 --- 
 
-### Block 4: Case studies and applications  
+### Block 5: Case studies and applications  
 
 + [Transportation](https://r.geocompx.org/transport){:target="_blank"}
 + [Geomarketing](https://r.geocompx.org/location){:target="_blank"}
