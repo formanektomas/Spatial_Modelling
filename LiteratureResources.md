@@ -13,6 +13,7 @@ layout: default
 
 + [Moraga: Spatial Statistics for Data Science:](https://www.paulamoraga.com/book-spatial/){:target="_blank"}  
 + [Rüttenauer: Spatial Data Analysis](https://arxiv.org/abs/2402.09895){:target="_blank"}  
++ [Geomatics for Environmental Management](https://www.opengeomatics.ca/){:target="_blank"}  
 
 
 ## Supporting literature and resources
