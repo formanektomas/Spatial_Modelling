@@ -1,5 +1,5 @@
 ---
-title: "`dplyr`"
+title: "dplyr"
 output: html_document
 ---
 
@@ -118,7 +118,9 @@ filter(NUTS2.DF, Year == 2011, NUTS0 %in% c("SI","SK"))
 ---
 
 
-## Pipes `|>`   (`%>%` is the old format)
+## Pipes `|>` (base) and `%>%` (magrittr)
+
+- see [https://tidyverse.org/blog/2023/04/base-vs-magrittr-pipe/](https://tidyverse.org/blog/2023/04/base-vs-magrittr-pipe/) for explanation of the difference between `|>` and `%>%`
 
 What if you want to select and filter at the same time? There are three
 ways to do this: 

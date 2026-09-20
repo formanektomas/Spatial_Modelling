@@ -8,10 +8,10 @@ editor: visual
 
 ## Goals for this script
 
-- Creating a nework/graph from spatial data  
-- Basic operations with graphs  
-- Spatial nework visualization  
-- Packages [igraph](https://r.igraph.org/articles/igraph.html) and [sfnetwork](https://luukvdmeer.github.io/sfnetworks/)
+- Creating a network/graph from spatial data\
+- Basic operations with graphs\
+- Spatial network visualization\
+- Packages [igraph](https://r.igraph.org/articles/igraph.html) and [sfnetworks](https://luukvdmeer.github.io/sfnetworks/)
 - **Build a simple network, find and visualize shortest path between two nodes**
 
 ```{r}
@@ -33,6 +33,10 @@ library(knitr)
 ## Build a simplified cycleway network
 
 ```{r}
+sfnetworks::roxel
+plot(sfnetworks::roxel[,"name"])
+
+# let's filter for the cycleways only
 roxel <- sfnetworks::roxel |>
   filter(type == "cycleway")
 
@@ -77,9 +81,7 @@ edges # edges of the network, created using: net |> activate("edges")
 nodes # nodes of the network, created using: net |> activate("nodes")
 ```
 
-
 ------------------------------------------------------------------------
-
 
 ## Display the network (`ggplot2` and `mapview`)
 
@@ -129,13 +131,11 @@ mapview(edges, zcol = "dist_m", lwd = 3, layer.name = "Edge (m)") +
 
 ```
 
-
 ------------------------------------------------------------------------
 
+## Distance matrix
 
-##  Distance matrix
-
-* Matrix of shortest-path distances along the network
+- Matrix of shortest-path distances along the network
 
 ```{r}
 g <- igraph::as.igraph(net)
@@ -159,12 +159,9 @@ knitr::kable(
 )
 ```
 
-
 ------------------------------------------------------------------------
 
-
-##  Display shortest path for two selected vertices
-
+## Display shortest path for two selected vertices
 
 ```{r}
 #| warning: FALSE
@@ -181,6 +178,8 @@ sp <- igraph::shortest_paths(
   weights = w,
   output = "both"
 )
+
+sp
 
 path_edge_ids <- igraph::edge_attr(g, "edge_id")[as.integer(sp$epath[[1]])]
 path_node_ids <- igraph::vertex_attr(g, "node_id")[as.integer(sp$vpath[[1]])]
@@ -243,8 +242,3 @@ mapview(edges, zcol = "dist_m", lwd = 3, layer.name = "Edge (m)") +
   mapview(nodes, col.regions = "grey50", cex = 5, layer.name = NULL) +
   mapview(path_edges, color = "red", lwd = 6, alpha =1, layer.name = "shortest path")
 ```
-
-
-
-
-
