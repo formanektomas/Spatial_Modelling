@@ -40,8 +40,8 @@ University of Economics, Prague
 
 #### Materials for Block 1  
 
-+ [Download presentation slides for Block 1](https://github.com/formanektomas/Spatial_Modelling/blob/main/Block1/Block1.pdf)
-+ [Download R scripts for Block 1 (zip)](https://github.com/formanektomas/Spatial_Modelling/blob/main/Block1/R_lab/Block1.zip)
++ [Download presentation slides for Block 1](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block1/Block1.pdf)  
++ [Download R scripts for Block 1 (zip)](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block1/R_lab/Block1.zip)  
 
 
 --- 
