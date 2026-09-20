@@ -24,12 +24,11 @@ University of Economics, Prague
 
 ### Block 1: Geodata: visualization and data wrangling
 
-+ [https://ruettenauer.github.io/SICSS-Spatial/index.html](https://ruettenauer.github.io/SICSS-Spatial/index.html){:target="_blank"}
 
 **Spatial geometries (sf objects)**  
 + Spatial objects, projections (coordinate reference systems), visualization (maps, choropleths)
 + Subsetting spatial data, distances, intersections, buffers, and other geometry-related operations
-    + [https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/02_spatial-data.html){:target="_blank"}  
+
 
 **Raster data**  
 + Remote sensing: satellite imaging and other raster data (formats, layers)  
@@ -43,6 +42,8 @@ University of Economics, Prague
 + [Download presentation slides for Block 1](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block1/Block1.pdf)  
 + [Download R scripts for Block 1 (zip)](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block1/R_lab/Block1.zip)  
 
+
+#### Readings for Block 1 
 
 --- 
 
