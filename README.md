@@ -25,16 +25,17 @@ University of Economics, Prague
 ### Block 1: Geodata: visualization and data wrangling
 
 
-**Spatial geometries (sf objects)**  
+#### Spatial geometries (sf objects)  
+
 + Spatial objects, projections (coordinate reference systems), visualization (maps, choropleths)
 + Subsetting spatial data, distances, intersections, buffers, and other geometry-related operations
 
 
-**Raster data**  
+#### Raster data  
+
 + Remote sensing: satellite imaging and other raster data (formats, layers)  
 + Raster data wrangling with `{terra}` package  
 + Raster-vector interactions  
-    + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector){:target="_blank"}  
 
 
 #### Materials for Block 1  
@@ -45,6 +46,8 @@ University of Economics, Prague
 
 #### Readings for Block 1 
 
++ [Lovelace et al.: Geocomputation with R, chapters 2 - 9](https://r.geocompx.org/index.html){:target="_blank"}
++ [Moraga: Spatial Statistics for Data Science, chapters 1 - 6](https://www.paulamoraga.com/book-spatial/){:target="_blank"}  
 --- 
 
 
