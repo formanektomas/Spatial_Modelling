@@ -46,8 +46,9 @@ University of Economics, Prague
 
 #### Readings for Block 1 
 
-+ [Lovelace et al.: Geocomputation with R, chapters 2 - 9](https://r.geocompx.org/index.html){:target="_blank"}
-+ [Moraga: Spatial Statistics for Data Science, chapters 1 - 6](https://www.paulamoraga.com/book-spatial/){:target="_blank"}  
++ [Lovelace et al.: Geocomputation with R, chapters 2 - 9](https://r.geocompx.org/index.html){:target="_blank"}   
++ [Moraga: Spatial Statistics for Data Science, chapters 1 - 6](https://www.paulamoraga.com/book-spatial/){:target="_blank"}   
+  
 --- 
 
 
