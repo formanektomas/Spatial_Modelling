@@ -1,5 +1,5 @@
 ---
-title: "`tidyr`"
+title: "tidyr"
 output: html_document
 ---
 
@@ -155,14 +155,14 @@ pivot_wider(GDPlong, names_from = "Year", values_from = "GDP")
 ```{r}
 # In this example, we plot GDP only,
 # so go back to the GDPlong dataset
-Plot1 <- ggplot(data = GDPlong, aes(x = Year, y = GDP))+
-  geom_line(aes(color=State))+
+Plot1 <- ggplot(data = GDPlong)+
+  geom_line(aes(x = Year, y = GDP, color=State))+
   xlab("Year")+ylab("Artificial GDP data")+
   facet_grid(State~.)
 Plot1
 
-Plot2 <- ggplot(data = GDPlong, aes(x = Year, y = GDP))+
-  geom_line(aes(color=State))+
+Plot2 <- ggplot(data = GDPlong)+
+  geom_line(aes(x = Year, y = GDP, color=State))+
   xlab("Year")+ylab("Artificial GDP data")+
   theme_light() # remove faceting, include theme "light"
 Plot2
@@ -306,7 +306,7 @@ UnDF %>%
   filter(geo %in% c("CZ","AT")) %>% 
   group_by(geo,gender) %>%
   mutate(u=values) %>% 
-  select(-values) %>% 
+  dplyr::select(-values) %>% 
   mutate(u_1 = lag(u, order_by = time)) %>%
   pivot_wider(names_from = c(geo,gender), 
               values_from = c(u,u_1),

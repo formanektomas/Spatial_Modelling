@@ -21,7 +21,7 @@ str(diamonds)
 # For plot readability, we shall use only 3.000 rows of the dataset (randomly selected)
 #
 ?sample
-?base:::sample
+?base::sample
 set.seed(10) # to ensure consistent random selection for the whole class
 DiamondDF <- diamonds[sample(nrow(diamonds),3000),] 
 #
