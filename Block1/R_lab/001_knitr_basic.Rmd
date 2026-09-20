@@ -57,6 +57,10 @@ is produced using `## Heading 2`, etc.
 
 **R-based elements:**
 
+- North Carolina sample dataset: `sf` package  
+- Shapefile format (legacy)  
+- NAD27 (North American Datum of 1927) is a historical horizontal geodetic coordinate reference system (CRS) for North America.
+
 ```{r}
 library(sf)
 #North Carolina (USA) sample dataset from the {sf} package
@@ -78,15 +82,15 @@ str(nc)
 You can also embed plots, for example:
 
 ```{r, echo=T}
-plot(st_geometry(nc))
+plot(nc[,"NAME"])
 # plot just the first line/country:
 plot(st_geometry(nc[1,]))
 ```
 
-Alternatively, you can hide the plot command from the output by using `{r, echo=FALSE}`:
+If convenient, you can hide the ploting `R` command from the output by using `{r, echo=FALSE}`:
 
 ```{r, echo=FALSE}
-plot(st_geometry(nc))
+plot(nc[,"NAME"])
 ```
 
 ___    
