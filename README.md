@@ -37,14 +37,23 @@ University of Economics, Prague
 + Raster-vector interactions  
     + [https://r.geocompx.org/raster-vector](https://r.geocompx.org/raster-vector){:target="_blank"}  
 
+
+#### Materials for Block 1  
+
++ [Download presentation slides for Block 1](https://github.com/formanektomas/Spatial_Modelling/blob/main/Block1/Block1.pdf)
++ [Download R scripts for Block 1 (zip)](https://github.com/formanektomas/Spatial_Modelling/blob/main/Block1/R_lab/Block1.zip)
+
+
 --- 
 
 
-### Block 2: Spatial networks
+### Block 2: Spatial networks & Urbanistics (space syntax analysis)
 
 **Graph represeentations of spatial data**  
 + Creating map-based graphs (connectivity, distance-based)   
-+ Centrality indices: node/edge importance  
++ Centrality indices: node/edge importance
++ Transportation-related applications  
++ Urbanistic applications (space syntax analysis)   
 + [https://r-spatial.org/r/2019/09/26/spatial-networks.html](https://r-spatial.org/r/2019/09/26/spatial-networks.html){:target="_blank"}  
 
 **Case studies and applications**   
