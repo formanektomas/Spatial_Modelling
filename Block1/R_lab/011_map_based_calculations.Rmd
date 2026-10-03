@@ -43,17 +43,18 @@ nc_map
 ggplot() + geom_sf(data = nc_map)
 # Simulate rare disease occurrences across NC
 #  type = "random", by_polygon = FALSE: default settings
-set.seed(123456)
+set.seed(123)
 occurrences <- st_sample(nc_map, size=70, type = "random", by_polygon = FALSE)
 # Plot the occurences
 ggplot() + geom_sf(data = nc_map) + geom_sf(data = occurrences, col ="red")
 # Intersection (first argument map, then points)
 intersections <- st_intersects(nc_map, occurrences)
-# this datasets maps to nc_maps easily
+# view the output (note how each row equals a region/county on NC map)
 intersections
-# reverse order of arguments
+#
+# what if we try to reverse the order of arguments
 intersections2 <- st_intersects(occurrences, nc_map)
-# this one doesn't map to nc_maps..
+# this one doesn't 'map' to nc_maps..
 intersections2
 # add occurrence counts to nc_maps
 nc_map$occurrences <- lengths(intersections)

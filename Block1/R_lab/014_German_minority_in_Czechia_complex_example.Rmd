@@ -271,7 +271,7 @@ CZ2011 |>
 
 > Should we interpolate German population ratios/shares, or should we interpolate the observed populations (total, German) and *then* calculate shares from interpolated population values?
 
-* If the underlying data (`Population_total`, `Population_German`) are available, **always** interpolate underlying data firts, and then calucate shares from the interpolation.  
+* If the underlying data (`Population_total`, `Population_German`) are available, **always** interpolate underlying data first, and then calculate shares from the interpolation.  
 
 * In **Problem 1**, we assume uniform distribution of the population **within each 1930-district**. Should we choose to interpolate population shares (ratios) directly, we are also assuming that population density is **uniformly distributed across 1930-districts**.  
 
@@ -808,8 +808,7 @@ A better approach would use auxiliary information, for example:
 - settlement points,
 - built-up areas,
 - historical cadastral data (land use information),
-- elevation or terrain,
-- gridded population data.
+- elevation or terrain.
 
 This would allow for improved weighted interpolation, where population is allocated according to plausible settlement locations rather than uniformly by the 1930-region area.
 

@@ -32,6 +32,7 @@ library(ggplot2)
 library(giscoR)
 library(eurostat)
 library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
 ```
 
 ---  
@@ -145,17 +146,13 @@ borders
 
 # Use ggplot2 to produce an infomap
 ggplot() +
-  geom_sf(
-    data = geosp_ht,     # HighTech data
+  geom_sf(data = geosp_ht,     # HighTech data
     aes(fill = emp_ht),
     color = "grey70",
-    linewidth = 0.1
-  ) +
-  geom_sf(
-    data = borders,     # borders plotted from a different dataframe
+    linewidth = 0.1) +
+  geom_sf(data = borders,     # borders plotted from a different dataframe
     color = "orange",
     fill = NA,
-    linewidth = 1
-  )
+    linewidth = 1)
 
 ```  

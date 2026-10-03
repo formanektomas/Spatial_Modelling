@@ -25,7 +25,9 @@ library(sfnetworks)
 library(tidygraph)
 library(igraph)
 library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
 library(knitr)
+
 ```
 
 ------------------------------------------------------------------------

@@ -109,9 +109,9 @@ ggplot(alaska_laea) +
 ```
 
 
-## Supervised exercise: Sweden 
+## Supervised exercise: Reproject Sweden from WGS84 to LAEA
 
-* task setup
+##### Task setup
 
 ```{r}
 # task setup: download NUTS2 regions for Sweden
@@ -144,16 +144,20 @@ ctr <- Sweden |>
   st_centroid() |> 
   st_coordinates()
 ctr
+```
 
-# To use bounding box can be convenient for some countries/geometries...
-# (what happens if we use bbox-based center to LAEA project Alaska?)
+##### Alternatively, we can choose centroids based on a bounding box
 
+Often a good alternative, but not always. What happens if we use bbox-based center to re-project Alaska?
+
+```{r}
 # What is a bounding box?
-bbox_ctr <- Sweden |> 
+bbox_Sweden <- Sweden |> 
   st_bbox() |> # generate a vector of 4 elements: xmin, ymin, xmax, ymax
   st_as_sfc()
+bbox_Sweden
 
-plot(bbox_ctr, reset=FALSE)
+plot(bbox_Sweden, reset=FALSE)
 plot(Sweden[,"NUTS_ID"], add=TRUE)
 
 # Find bbox-based center for Sweden
@@ -179,18 +183,27 @@ bbox_ctr
 * same principle as vector-based projections / reprojections  
 * for `terra`, use `project()` instead of `st_transform()`
 
+##### WGS 84
+
 ```{r}
 CZelevation <- RCzechia::vyskopis(format = "actual")
 CZelevation
+plot(CZelevation)
+```
 
+##### LAEA Europe (EPSG:3035)
+
+```{r}
 CZelevation_laea <- project(CZelevation,  "EPSG:3035") # LAEA Europe
 CZelevation_laea
+plot(CZelevation_laea)
+```
 
+##### Krovak (EPSG:5514)
+
+```{r}
 CZelevation_Krovak <- project(CZelevation,  "EPSG:5514") # Krovak projection
 CZelevation_Krovak
-
-plot(CZelevation)
-plot(CZelevation_laea)
 plot(CZelevation_Krovak)
 ```
 
@@ -203,6 +216,7 @@ plot(CZelevation_Krovak)
 
 ```{r}
 # Complete the task here
+
 ```
 
 

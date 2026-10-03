@@ -8,6 +8,7 @@
 library(sf)
 library(tidyverse)
 library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
 # rm(list=ls())
 ################################################################################
 #
@@ -125,7 +126,7 @@ mapview(p2, col.regions = "red", cex = 6) +
 mapview(route, color = "blue", lwd = 4, layer.name = "Route")
 #
 #
-# Again, we can use st_cast() to get points along the line/route
+# Again, we can use st_cast() to retrieve points along the line/route 
 points_along_the_route <- st_cast(route, "POINT")
 points_along_the_route
 mapview(points_along_the_route, col.regions = "red", cex = 6) +
