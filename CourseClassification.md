@@ -28,7 +28,18 @@ Grading scale
 
 **Průběžné testy: týden 5 (19.10.2026), 8 (9.11.2026), 11 (30.11.2026), 13 (14.12.2026).**  
 + Při neúčasti na průběžném testu lze ve 13. týdnu absolvovat náhradní termín - **pouze při řádně omluvené zdravotní absenci**.  
-+ Náhradní termín průběžných testů (pouze při řádně omluvené zdravotní absenci): středa 16. prosince 2026, 15:00–16:00, NB432.  
++ Náhradní termín průběžných testů (pouze při řádně omluvené zdravotní absenci): středa 16. prosince 2026, 15:00–16:00, NB432.
+
+
+
+## Materiály pro průběžný test č. 1  
+
+- Prezentace, Blok 1, do slidu č. 27
+- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 2](https://www.paulamoraga.com/book-spatial/spatial-data-in-r.html)   
+- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 3](https://www.paulamoraga.com/book-spatial/the-sf-package-for-spatial-vector-data.html)  
+
+
+
 
 --- 
 
