@@ -35,8 +35,8 @@ Grading scale
 ## Materiály pro průběžný test č. 1  
 
 - Prezentace, Blok 1, do slidu č. 27
-- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 2](https://www.paulamoraga.com/book-spatial/spatial-data-in-r.html)   
-- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 3](https://www.paulamoraga.com/book-spatial/the-sf-package-for-spatial-vector-data.html)  
+- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 2](https://www.paulamoraga.com/book-spatial/spatial-data-in-r.html){:target="_blank"}    
+- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 3](https://www.paulamoraga.com/book-spatial/the-sf-package-for-spatial-vector-data.html){:target="_blank"}     
 
 
 
