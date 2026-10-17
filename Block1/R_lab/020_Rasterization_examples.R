@@ -11,6 +11,8 @@
 # 
 #-------------------------------------------------------------------------------
 # packages
+library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
 library(sf)
 library(spData)
 library(ggplot2)

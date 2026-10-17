@@ -85,7 +85,7 @@ ext(ndvi_on_srtm_grid) == ext(srtm)
 compareGeom(ndvi_on_srtm_grid, srtm, stopOnError = FALSE)
 #
 # For the analysis, we combine the two rasters into a two-layer raster
-# (other ways to proceed are possible, this one is rather convenient)
+# (other ways to proceed are possible, this one is convenient)
 model_rast <- c(ndvi_on_srtm_grid, srtm)
 model_rast
 plot(model_rast)

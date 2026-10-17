@@ -98,6 +98,7 @@ ndvi_rast = lapp(multi_rast[[c(4, 3)]], fun = ndviFN)
 names(ndvi_rast) <- "NDVI"
 summary(values(ndvi_rast))
 # Keep NDVI values within theoretical NDVI range
+?terra::clamp
 ndvi_rast <- clamp(ndvi_rast,lower = -1,upper = 1,values = TRUE)
 # Optional: keep values within theoretical NDVI range
 ndvi_rast <- clamp(
@@ -130,7 +131,9 @@ plot(ndvi_rast,col = ndvi_pal,main = "NDVI",axes = TRUE)
 #   5 rows (5 classes)
 #   3 columns (min value in class, max value in class, class ID)
 
+?terra::classify
 
+# all-in-one classification function
 classify_ndvi <- function(ndvi) {
   # Classification matrix:
   # from, to, class_id
@@ -191,6 +194,9 @@ ndvi_multi_sf <- ndvi_class |>
     .groups = "drop"
   ) |>
   st_cast("MULTIPOLYGON")
+
+ndvi_multi_sf # make take a moment to show the row in console
+
 # plot the sf object 
 ggplot(ndvi_multi_sf) +
   geom_sf(
@@ -284,9 +290,8 @@ summary(values(ndwi_rast))
 # Keep values within the theoretical NDWI range
 ndwi_rast <- clamp(ndwi_rast,lower = -1,upper = 1,values = TRUE)
 
-# Plot the output using a brown-white-blue divergent palette
-ndwi_pal <- colorRampPalette(c("sienna4", "white", "deepskyblue", "darkblue"))(100)
-plot(ndwi_rast,col = ndwi_pal,main = "NDWI",axes = TRUE)
+# Plot the output
+plot(ndwi_rast,main = "NDWI",axes = TRUE)
 
 # Identify and plot water / snow (max. elevation on the map is  2892m)
 water = ndwi_rast > 0.3

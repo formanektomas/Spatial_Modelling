@@ -2,6 +2,7 @@
 #
 library(giscoR)
 library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
 library(h3jsr)
 library(sf)
 library(RCzechia)

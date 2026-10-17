@@ -79,13 +79,13 @@ class(point_xy)
 plot(CZmasked)
 points(point_xy, pch = 21,bg = "red",col = "red",cex = 1.5)
 
-# Now, we can produce an sf object with elevation and geometry (POINT)
 # - vectorize the raster element, note the type argument
 selected_point <- vect(point_xy,type = "points",crs = crs(CZmasked))
+selected_point
 # - convert to sf
 selected_point_sf <- st_as_sf(selected_point)
 selected_point_sf
-# 
+# - add elevation data using terra::extract()
 selected_point_sf <- selected_point_sf |>
   # terra::extract() returns a data frame, while mutate() needs the extracted 
   # column as a vector. Select the elevation column from the extraction result:
@@ -93,7 +93,7 @@ selected_point_sf <- selected_point_sf |>
   select(elevation, geometry)
 selected_point_sf
 
-# Now, repeat the same for three specific places:
+# Now, repeat the same for three different locations at once:
 addresses <- c(
   "nám. W. Churchilla, Prague, Czechia",
   "Václavské náměstí, Prague, Czechia",
@@ -105,7 +105,8 @@ locs <- tidygeocoder::geo(address = addresses) |>
   # st_as_sf does not work with NAs
   sf::st_as_sf(coords = c("long", "lat"),crs = 4326, remove = FALSE)
 locs
-# locs <- st_read("data/locs.gpkg") # if the geocoding API request fails..
+# if the geocoding API request fails, use:
+# locs <- st_read("data/locs.gpkg") 
 
 
 locs <- locs |>
@@ -130,56 +131,7 @@ Prague_to_Brno_line <- locs[c(2, 4), ] |> # select two rows from the sf datafram
 plot(CZmasked)
 lines(Prague_to_Brno_line, pch = 21,bg = "red",col = "red",lwd=2)
 
-# Elevation data can be collected (a) with some desired granularity, 
-#                                 (b) at raster resolution
-
-# (a) subsetting at desired granularity
-# we use the st_segmentize() function
-# - dfMaxLength = 250 is reliably interpreted as 250 map units only in a projected metric CRS
-# - so project to Krovak first (units are meters)
-Prague_to_Brno <- st_transform(Prague_to_Brno_line, 5514)
-Prague_to_Brno <- st_segmentize(Prague_to_Brno, dfMaxLength = 250) 
-as.character(Prague_to_Brno$geometry)
-# This is still a LINESTRING, just "denser" (more points) 
-# >> covert to points for elevation extraction:
-Prague_to_Brno = st_cast(Prague_to_Brno, "POINT") # points along the line
-Prague_to_Brno$id <- 1:nrow(Prague_to_Brno)
-Prague_to_Brno
-# For plotting and meaningful analysis, we typically want to measure 
-# distances from the start (along the original line from Prague to Brno)
-
-Prague_to_Brno$dist <- NA # prepare variable for distance storage
-first_point <- st_geometry(Prague_to_Brno)[1]
-for (i in seq_len(nrow(Prague_to_Brno))) {
-  Prague_to_Brno$dist[i] <- as.numeric(
-    st_distance(st_geometry(Prague_to_Brno)[i],first_point))
-}
-
-Prague_to_Brno$dist_km <- Prague_to_Brno$dist / 1000
-Prague_to_Brno <- Prague_to_Brno %>%
-  st_transform(4326) %>%  # back to WGS84 - to match the elevation raster
-  # terra::extract() returns a data frame, while mutate() needs the extracted 
-  # column as a vector. Select the elevation column from the extraction result:
-  mutate(elevation = terra::extract(CZmasked, . )[["elevation"]]) 
-  # "." is a placeholder if %>% (magrittr pipe) is used, doesn't work with |> (base pipe)
-Prague_to_Brno
-
-# Plot the results
-Prague_to_Brno |>
-  arrange(dist_km) |>
-  ggplot(aes(x = dist_km, y = elevation)) +
-  geom_line(linewidth = 0.8, colour = "steelblue") +
-  labs(
-    x = "Distance along the line from Prague (left) to Brno (right), in km",
-    y = "Elevation",
-    title = "Elevation profile along the straight line (Prague to Brno)"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5)
-  )
-
-# (b) subsetting can be performed "directly" - at the raster resolution as well:
+# Elevation can be collected with some desired granularity, and at raster resolution
 
 # Extract all Prague2Brno raster cells touched by the line
 P2B_cells <- terra::extract(
@@ -193,27 +145,48 @@ P2B_cells <- terra::extract(
 
 head(P2B_cells) 
 class(P2B_cells)
-# interactive 3D plot
-plot_ly(
-  data = P2B_cells,
-  x = ~x,
-  y = ~y,
-  z = ~elevation,
-  color = ~elevation,
-  colors = viridisLite::viridis(100),
-  type = "scatter3d",
-  mode = "lines+markers",
-  marker = list(size = 2),
-  line = list(width = 4)
-) |>
-  layout(
-    title = "Three-dimensional elevation profile along D5",
-    scene = list(
-      xaxis = list(title = "X coordinate"),
-      yaxis = list(title = "Y coordinate"),
-      zaxis = list(title = "Elevation")
-    )
-  )
+
+# We want to plot elevation against the path (distance) from Prague to Brno
+
+# 1 Convert extracted raster-cell centres to sf points
+P2B_cells_sf <- P2B_cells |>
+  st_as_sf(
+    coords = c("x", "y"),
+    crs = crs(CZmasked)
+  ) |>
+  # Transform to a projected CRS so that distances are measured in metres
+  st_transform(5514)
+
+# Define Prague as the origin of the profile
+# locs[2, ] is Václavské náměstí, Prague
+Prague_origin <- locs[2, ] |>
+  st_transform(5514)
+
+# Calculate straight-line distance from Prague to every extracted cell centre
+#
+# Because all extracted cells follow the straight Prague-Brno line,
+# distance from the Prague origin represents position along the profile.
+P2B_cells_sf$dist_km <- as.numeric(
+  st_distance(P2B_cells_sf, Prague_origin)
+) / 1000
+
+# Convert to a regular data frame for plotting
+# Geometry is no longer needed in the elevation-profile graph
+P2B_profile <- P2B_cells_sf |>
+  st_drop_geometry() |>
+  arrange(dist_km)
+
+# Plot the elevation profile
+ggplot(
+  P2B_profile,
+  aes(x = dist_km, y = elevation)) +
+  geom_line(linewidth = 0.8,colour = "steelblue") +
+  labs(
+    x = "Distance from Prague (km)",
+    y = "Elevation (m)",
+    title = "Elevation profile along the straight line from Prague to Brno") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 #
 #-------------------------------------------------------------------------------
