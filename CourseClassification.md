@@ -40,6 +40,12 @@ Grading scale
 
 
 
+## Materiály pro průběžný test č. 2  
+
+- Prezentace, Blok 1, od slidu č. 28 do konce
+- [Moraga, Spatial Statistics for Data Science: Theory and Practice with R, kapitola 4](https://www.paulamoraga.com/book-spatial/the-terra-package-for-raster-and-vector-data.html){:target="_blank"}    
+- [Lovelace, Nowosad, Muenchow: Geocomputation with R, kapitola 6](https://r.geocompx.org/raster-vector){:target="_blank"}    
+
 
 --- 
 
