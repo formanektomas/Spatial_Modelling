@@ -49,7 +49,7 @@ Grading scale
 
 --- 
 
-#### Seminární práce 
+## Seminární práce 
 
 **Základní informace**  
 - Studenti zpracují a odevzdají seminární práci individuálně.  
@@ -103,7 +103,7 @@ Grading scale
 
 --- 
 
-#### Závěrečná zkouška
+## Závěrečná zkouška
 
 - více termínů v průběhu zkouškového období: viz InSIS.
 
