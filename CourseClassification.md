@@ -94,11 +94,6 @@ Grading scale
 5. Závěr	(1 s).  
 6. Literatura   
 
---- 
-
-[Homepage](https://formanektomas.github.io/4EK417/)
-
-
 
 
 --- 
@@ -108,7 +103,7 @@ Grading scale
 - více termínů v průběhu zkouškového období: viz InSIS.
 
 
-
+---  
 
 
 [Homepage](./)
