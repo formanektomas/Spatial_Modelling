@@ -54,7 +54,7 @@ Grading scale
 **Základní informace**  
 - Studenti zpracují a odevzdají seminární práci individuálně.  
 - Rozsah práce: cca 15 stran (max. 25 stran včetně grafických a tabulkových příloh).  
-- Použití prostředků AI je povoleno, AI lze využít při programování, psaní textů, analýzu dat i pro návrh postupu řešení.  
+- Použití prostředků AI je povoleno, AI lze využít při programování, pro psaní textů, analýzu dat i pro návrh postupu řešení.  
 - Za správnost a kvalitu řešení vždy odpovídá student, nikoliv použitý nástroj.  
 - Rozsah zapojení AI je třeba korektně deklarovat.  
 
