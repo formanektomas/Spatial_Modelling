@@ -54,17 +54,23 @@ University of Economics, Prague
 
 ### Block 2: Spatial networks & Urbanistics (space syntax analysis)
 
-**Graph represeentations of spatial data**  
+#### Graph represeentations of spatial data  
 + Creating map-based graphs (connectivity, distance-based)   
 + Centrality indices: node/edge importance
 + Transportation-related applications  
 + Urbanistic applications (space syntax analysis)   
-+ [https://r-spatial.org/r/2019/09/26/spatial-networks.html](https://r-spatial.org/r/2019/09/26/spatial-networks.html){:target="_blank"}  
 
-**Case studies and applications**   
+
+#### Materials for Block 2  
+
++ [Download presentation slides for Block 2](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block2/Block2.pdf)  
+
+
+#### Case studies and applications   
 + Transportation-related applications  
 + Urbanistic applications (space syntax analysis)   
 + [Ecology](https://r.geocompx.org/eco){:target="_blank"}   
++ [https://r-spatial.org/r/2019/09/26/spatial-networks.html](https://r-spatial.org/r/2019/09/26/spatial-networks.html){:target="_blank"}  
 
 
 --- 
