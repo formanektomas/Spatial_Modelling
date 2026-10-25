@@ -2,3 +2,6 @@ theme: jekyll-theme-modernist
 title: 4EK662 & 4EK4462
 tagline: Spatial Modelling & Prostorové modely
 description: "Study materials: lectures and R-labs/seminars"
+
+exclude:
+  - Block2/Presentation_codes/
