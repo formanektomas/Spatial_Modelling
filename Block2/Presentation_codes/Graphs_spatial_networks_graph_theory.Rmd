@@ -1031,7 +1031,6 @@ V(g_empty)$name <- vertices$name
 # Two connected components:
 #
 # A -- B
-#
 # C -- D
 # ------------------------------------------------------------
 
@@ -1046,8 +1045,6 @@ g_disconnected <- graph_from_data_frame(
 
 # ------------------------------------------------------------
 # 5. Create a connected graph
-#
-# A path joining all four vertices:
 #
 # A -- B -- D -- C
 # ------------------------------------------------------------
@@ -1118,31 +1115,27 @@ plot_graph <- function(graph, graph_title, graph_subtitle) {
       clip = "off"
     ) +
     labs(
-      title = graph_title
+      title = graph_title,
+      subtitle = graph_subtitle
     ) +
     theme_void() +
     theme(
       plot.title = element_text(
         size = 13,
         face = "bold",
-        hjust = 0.5,
-        margin = margin(
-          b = 3
-        )
+        hjust = 0.5
       ),
       plot.subtitle = element_text(
         size = 10,
         colour = "grey35",
         hjust = 0.5,
-        margin = margin(
-          b = 5
-        )
+        margin = margin(b = 5)
       ),
       plot.margin = margin(
-        t = 5,
-        r = 5,
         b = 5,
-        l = 5
+        l = 5,
+        r = 5,
+        t = 5
       )
     )
 }
@@ -1153,22 +1146,26 @@ plot_graph <- function(graph, graph_title, graph_subtitle) {
 
 p_empty <- plot_graph(
   graph = g_empty,
-  graph_title = "Empty graph"
+  graph_title = "Empty graph",
+  graph_subtitle = "No edges"
 )
 
 p_disconnected <- plot_graph(
   graph = g_disconnected,
-  graph_title = "Disconnected graph"
+  graph_title = "Disconnected graph",
+  graph_subtitle = "Two connected components"
 )
 
 p_connected <- plot_graph(
   graph = g_connected,
-  graph_title = "Connected graph"
+  graph_title = "Connected graph",
+  graph_subtitle = "A path joining all four vertices"
 )
 
 p_complete <- plot_graph(
   graph = g_complete,
-  graph_title = expression(paste("Complete graph  ", K[4]))
+  graph_title = "Complete graph",
+  graph_subtitle = "K[4]"
 )
 
 # ------------------------------------------------------------
@@ -1187,10 +1184,7 @@ p_taxonomy <- (
       plot.title = element_text(
         size = 16,
         face = "bold",
-        hjust = 0.5,
-        margin = margin(
-          b = 10
-        )
+        hjust = 0.5
       )
     )
   )
@@ -1241,9 +1235,7 @@ graph_summary
 
 ## Star graph
 
-
 ```{r}
-
 
 # ------------------------------------------------------------
 # Function for creating and plotting a star graph K_{1,n}
@@ -1263,19 +1255,19 @@ plot_star_graph <- function(n_leaves) {
     center = 1
   )
   
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   # Construct a circular layout
   #
   # The central vertex is at (0, 0).
   # The pendant vertices are distributed evenly around it.
   # The first pendant vertex is placed at the top.
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   
   angles <- seq(
     from = pi / 2,
     to = pi / 2 + 2 * pi,
     length.out = n_leaves + 1
-  )[1:n_leaves]
+  )
   
   xy <- rbind(
     
@@ -1284,19 +1276,19 @@ plot_star_graph <- function(n_leaves) {
     
     # Pendant vertices
     cbind(
-      cos(angles),
-      sin(angles)
+      cos(angles[2:(n_leaves + 1)]),
+      sin(angles[2:(n_leaves + 1)])
     )
   )
   
   # Mathematical label below the graph
   graph_label <- bquote(
-    K[1 * "," * .(n_leaves)]
+    K[1 ~ "," ~ .(n_leaves)]
   )
   
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   # Plot the star graph
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   
   ggraph(
     g_star,
@@ -1379,14 +1371,12 @@ p_star_sequence <- (
 
 p_star_sequence
 
-
 ```
 
 
 ## Trees
 
 ```{r}
-
 
 # Helper function for creating a tree plot
 # ------------------------------------------------------------
@@ -1453,12 +1443,12 @@ plot_tree <- function(edges, vertices, coordinates, label) {
 
 # ============================================================
 # TREE 1: T4
-#
-#        A
-#       / \
-#      B   C
-#          |
-#          D
+# ============================================================
+#     A
+#    / \
+#   B   C
+#      / \
+#     D   E
 #
 # 4 vertices, 3 edges
 # ============================================================
@@ -1468,24 +1458,11 @@ edges_T4 <- data.frame(
   to   = c("B", "C", "D")
 )
 
-vertices_T4 <- c(
-  "A", "B", "C", "D"
-)
-
+vertices_T4 <- c("A", "B", "C", "D")
 coordinates_T4 <- data.frame(
   name = vertices_T4,
-  x = c(
-     0.0,   # A
-    -0.9,   # B
-     0.9,   # C
-     0.9    # D
-  ),
-  y = c(
-    2.0,    # A
-    1.0,    # B
-    1.0,    # C
-    0.0     # D
-  )
+  x = c(0.0, -0.9, 0.9, 1.5),
+  y = c(2.0, 1.0, 1.0, 0.0)
 )
 
 p_T4 <- plot_tree(
@@ -1497,10 +1474,10 @@ p_T4 <- plot_tree(
 
 # ============================================================
 # TREE 2: T5
-#
-#          A
-#        /   \
-#       B     C
+# ============================================================
+#     A
+#    / \
+#   B   C
 #      / \
 #     D   E
 #
@@ -1508,30 +1485,15 @@ p_T4 <- plot_tree(
 # ============================================================
 
 edges_T5 <- data.frame(
-  from = c("A", "A", "B", "B"),
+  from = c("A", "A", "C", "C"),
   to   = c("B", "C", "D", "E")
 )
 
-vertices_T5 <- c(
-  "A", "B", "C", "D", "E"
-)
-
+vertices_T5 <- c("A", "B", "C", "D", "E")
 coordinates_T5 <- data.frame(
   name = vertices_T5,
-  x = c(
-     0.0,   # A
-    -0.8,   # B
-     0.9,   # C
-    -1.4,   # D
-    -0.3    # E
-  ),
-  y = c(
-    2.0,    # A
-    1.0,    # B
-    1.0,    # C
-    0.0,    # D
-    0.0     # E
-  )
+  x = c(0.0, -1.0, 1.0, 1.8, 0.8),
+  y = c(2.0, 1.0, 1.0, 0.0, 0.0)
 )
 
 p_T5 <- plot_tree(
@@ -1543,12 +1505,12 @@ p_T5 <- plot_tree(
 
 # ============================================================
 # TREE 3: T7
-#
-#             A
-#           /   \
-#          B     C
-#         / \   / \
-#        D   E F   G
+# ============================================================
+#       A
+#      / \
+#     B   C
+#    / \  / \
+#   D   E F  G
 #
 # 7 vertices, 6 edges
 # ============================================================
@@ -1558,30 +1520,11 @@ edges_T7 <- data.frame(
   to   = c("B", "C", "D", "E", "F", "G")
 )
 
-vertices_T7 <- c(
-  "A", "B", "C", "D", "E", "F", "G"
-)
-
+vertices_T7 <- c("A", "B", "C", "D", "E", "F", "G")
 coordinates_T7 <- data.frame(
   name = vertices_T7,
-  x = c(
-     0.0,   # A
-    -0.9,   # B
-     0.9,   # C
-    -1.5,   # D
-    -0.5,   # E
-     0.5,   # F
-     1.5    # G
-  ),
-  y = c(
-    2.0,    # A
-    1.0,    # B
-    1.0,    # C
-    0.0,    # D
-    0.0,    # E
-    0.0,    # F
-    0.0     # G
-  )
+  x = c(0.0, -1.3, 1.3, -2.1, -0.5, 2.1, 0.5),
+  y = c(2.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0)
 )
 
 p_T7 <- plot_tree(
@@ -1593,66 +1536,28 @@ p_T7 <- plot_tree(
 
 # ============================================================
 # TREE 4: T10
-#
-#                  A
-#              /       \
-#             B         C
-#           /   \     /   \
-#          D     E   F     G
-#         / \       /       \
-#        H   I     J
+# ============================================================
+#        A
+#       / \
+#      B   C
+#     / \  / \
+#    D  E F  G
+#       / \
+#      H  I
 #
 # 10 vertices, 9 edges
 # ============================================================
 
 edges_T10 <- data.frame(
-  from = c(
-    "A", "A",
-    "B", "B",
-    "C", "C",
-    "D", "D",
-    "F"
-  ),
-  to = c(
-    "B", "C",
-    "D", "E",
-    "F", "G",
-    "H", "I",
-    "J"
-  )
+  from = c("A", "A", "B", "B", "C", "C", "F", "F"),
+  to   = c("B", "C", "D", "E", "F", "G", "H", "I")
 )
 
-vertices_T10 <- c(
-  "A", "B", "C", "D", "E",
-  "F", "G", "H", "I", "J"
-)
-
+vertices_T10 <- c("A", "B", "C", "D", "E", "F", "G", "H", "I")
 coordinates_T10 <- data.frame(
   name = vertices_T10,
-  x = c(
-     0.0,   # A
-    -0.9,   # B
-     0.9,   # C
-    -1.4,   # D
-    -0.4,   # E
-     0.4,   # F
-     1.4,   # G
-    -1.7,   # H
-    -1.1,   # I
-     0.4    # J
-  ),
-  y = c(
-    2.2,    # A
-    1.5,    # B
-    1.5,    # C
-    0.8,    # D
-    0.8,    # E
-    0.8,    # F
-    0.8,    # G
-    0.0,    # H
-    0.0,    # I
-    0.0     # J
-  )
+  x = c(0.0, -1.4, 1.4, -2.3, -0.7, 2.4, 2.9, 1.8, 3.0),
+  y = c(2.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -0.9, -0.9)
 )
 
 p_T10 <- plot_tree(
@@ -1680,31 +1585,13 @@ p_tree_sequence <- (
 p_tree_sequence
 
 # ------------------------------------------------------------
-# Verify the number of vertices and edges
+# Verify that each graph is a tree
 # ------------------------------------------------------------
 
-tree_summary <- data.frame(
-  Tree = c(
-    "T4",
-    "T5",
-    "T7",
-    "T10"
-  ),
-  Vertices = c(
-    length(vertices_T4),
-    length(vertices_T5),
-    length(vertices_T7),
-    length(vertices_T10)
-  ),
-  Edges = c(
-    nrow(edges_T4),
-    nrow(edges_T5),
-    nrow(edges_T7),
-    nrow(edges_T10)
-  )
-)
-
-tree_summary
+is_tree(graph_from_data_frame(edges_T4, directed = FALSE, vertices = data.frame(name = vertices_T4)))
+is_tree(graph_from_data_frame(edges_T5, directed = FALSE, vertices = data.frame(name = vertices_T5)))
+is_tree(graph_from_data_frame(edges_T7, directed = FALSE, vertices = data.frame(name = vertices_T7)))
+is_tree(graph_from_data_frame(edges_T10, directed = FALSE, vertices = data.frame(name = vertices_T10)))
 
 ```
 
@@ -1713,11 +1600,10 @@ tree_summary
 
 ```{r}
 
-
 # ------------------------------------------------------------
 # 1. Define the graph
 #
-# This is the cycle graph C5, drawn first as a five-pointed
+# The graph is the cycle graph C5, drawn first as a five-pointed
 # star and then as a crossing-free pentagon.
 #
 # Edge sequence:
@@ -1849,7 +1735,7 @@ p_star <- ggraph(
   labs(
     title = "Star-shaped drawing",
     subtitle = "Edges cross, but crossings are not vertices",
-    caption = expression(G %cong% C[5])
+    caption = expression(C[5])
   ) +
   theme_void() +
   theme(
@@ -1995,7 +1881,6 @@ is_connected(g_star)
 
 ## Bridges of Königsberg problem
 
-
 ```{r}
 
 
@@ -2035,685 +1920,3 @@ vertices <- data.frame(
 # Therefore:
 #   d(A) = 5
 #   d(B) = 3
-#   d(C) = 3
-#   d(D) = 3
-# ------------------------------------------------------------
-
-bridges <- data.frame(
-  from = c(
-    "A", "A",   # two bridges A--C
-    "A", "A",   # two bridges A--B
-    "A",        # one bridge A--D
-    "C",        # one bridge C--D
-    "B"         # one bridge B--D
-  ),
-  to = c(
-    "C", "C",
-    "B", "B",
-    "D",
-    "D",
-    "D"
-  ),
-  bridge = paste0("e", 1:7)
-)
-
-# ------------------------------------------------------------
-# 3. Create the undirected multigraph
-#
-# Do not use simplify(), because it would remove the
-# parallel bridges.
-# ------------------------------------------------------------
-
-g_konigsberg <- graph_from_data_frame(
-  d = bridges,
-  directed = FALSE,
-  vertices = vertices
-)
-
-# ------------------------------------------------------------
-# 4. Calculate and store vertex degrees
-# ------------------------------------------------------------
-
-V(g_konigsberg)$vertex_degree <- degree(
-  g_konigsberg,
-  loops = TRUE
-)
-
-V(g_konigsberg)$plot_label <- paste0(
-  V(g_konigsberg)$name,
-  "\n",
-  "d = ",
-  V(g_konigsberg)$vertex_degree
-)
-
-# ------------------------------------------------------------
-# 5. Define the geographic-style layout
-#
-# C = northern bank
-# A = Kneiphof island
-# B = southern bank
-#
-# C, A, and B are vertically aligned.
-# D is placed to the right of A.
-# ------------------------------------------------------------
-
-layout_coordinates <- data.frame(
-  name = c("A", "B", "C", "D"),
-  x = c(
-    0.0,   # A: Kneiphof island
-    0.0,   # B: southern bank
-    0.0,   # C: northern bank
-    2.6    # D: Lomse island
-  ),
-  y = c(
-     0.0,   # A: central island
-    -1.4,   # B: southern bank
-     1.4,   # C: northern bank
-     0.0    # D: eastern island
-  )
-)
-
-# Match coordinates to the internal igraph vertex order
-layout_coordinates <- layout_coordinates[
-  match(
-    V(g_konigsberg)$name,
-    layout_coordinates$name
-  ),
-]
-
-# ------------------------------------------------------------
-# 6. Create manually positioned bridge labels
-#
-# The labels for each pair of parallel bridges are shifted
-# to opposite sides of the corresponding edges.
-# ------------------------------------------------------------
-
-bridge_labels <- data.frame(
-  bridge = paste0("e", 1:7),
-
-  x = c(
-    -0.12,  0.12,  # e1, e2: A--C
-    -0.12,  0.12,  # e3, e4: A--B
-     0.80,         # e5: A--D
-     0.86,         # e6: C--D
-     0.86          # e7: B--D
-  ),
-
-  y = c(
-     0.70,  0.70,  # e1, e2: A--C
-    -0.70, -0.70,  # e3, e4: A--B
-     0.10,         # e5: A--D
-     0.82,         # e6: C--D
-    -0.72          # e7: B--D
-  ),
-
-  angle = c(
-    90, 90,        # vertical A--C labels
-    90, 90,        # vertical A--B labels
-     0,            # horizontal A--D label
-   -41,            # diagonal C--D label
-    41             # diagonal B--D label
-  )
-)
-
-# ------------------------------------------------------------
-# 7. Plot the Königsberg bridge multigraph
-# ------------------------------------------------------------
-
-p_konigsberg <- ggraph(
-  g_konigsberg,
-  layout = "manual",
-  x = layout_coordinates$x,
-  y = layout_coordinates$y
-) +
-
-  # Draw all seven bridges.
-  #
-  # strength > 1 produces wider separation between parallel
-  # bridges A--C and A--B.
-  geom_edge_fan(
-    colour = "grey45",
-    linewidth = 1.2,
-    strength = 1.4
-  ) +
-
-  # Add bridge labels separately.
-  #
-  # fill = "white" gives each label a small white background,
-  # which keeps the text readable over the edges.
-  geom_label(
-    data = bridge_labels,
-    aes(
-      x = x,
-      y = y,
-      label = bridge,
-      angle = angle
-    ),
-    inherit.aes = FALSE,
-    size = 3.8,
-    label.size = 0,
-    label.padding = unit(0.10, "lines"),
-    fill = "white",
-    colour = "black"
-  ) +
-
-  # Draw the four land-mass vertices
-  geom_node_point(
-    size = 17,
-    shape = 21,
-    fill = "#DCEAF6",
-    colour = "#2C6E9F",
-    stroke = 1.4
-  ) +
-
-  # Show vertex names and degrees
-  geom_node_text(
-    aes(
-      label = plot_label
-    ),
-    size = 4,
-    lineheight = 0.9
-  ) +
-
-  coord_equal(
-    xlim = c(-0.9, 2.4),
-    ylim = c(-1.9, 1.9),
-    clip = "off"
-  ) +
-
-  labs(
-    title = "The Seven Bridges of Königsberg",
-    subtitle = paste(
-      "A = Kneiphof island;",
-      "B = southern bank;",
-      "C = northern bank;",
-      "D = Lomse island"
-    ),
-    caption = "Undirected multigraph"
-  ) +
-
-  theme_void() +
-
-  theme(
-    plot.title = element_text(
-      size = 17,
-      face = "bold",
-      hjust = 0.5
-    ),
-    plot.subtitle = element_text(
-      size = 10.5,
-      colour = "grey30",
-      hjust = 0.5,
-      margin = margin(b = 10)
-    ),
-    plot.caption = element_text(
-      size = 11,
-      face = "italic",
-      colour = "grey35",
-      hjust = 0.5,
-      margin = margin(t = 8)
-    ),
-    plot.margin = margin(
-      t = 10,
-      r = 15,
-      b = 10,
-      l = 15
-    )
-  )
-
-p_konigsberg
-# ------------------------------------------------------------
-# 8. Verify the vertex degrees
-# ------------------------------------------------------------
-
-vertex_degrees <- degree(
-  g_konigsberg
-)
-
-vertex_degrees
-
-# Expected:
-#
-# A B C D
-# 5 3 3 3
-
-# ------------------------------------------------------------
-# 9. Identify odd-degree vertices
-# ------------------------------------------------------------
-
-odd_vertices <- names(
-  vertex_degrees[
-    vertex_degrees %% 2 == 1
-  ]
-)
-
-number_of_odd_vertices <- length(
-  odd_vertices
-)
-
-odd_vertices
-number_of_odd_vertices
-
-# All four vertices have odd degree.
-
-# ------------------------------------------------------------
-# 10. Check Euler conditions
-# ------------------------------------------------------------
-
-has_euler_circuit <- (
-  is_connected(g_konigsberg) &&
-  number_of_odd_vertices == 0
-)
-
-has_open_euler_trail <- (
-  is_connected(g_konigsberg) &&
-  number_of_odd_vertices == 2
-)
-
-has_euler_circuit
-# FALSE
-
-has_open_euler_trail
-# FALSE
-
-```
-
-
-## igraph basics
-
-```{r}
-g1 <- igraph::make_graph(
-     ~ A--B,
-     A--C,
-     B--C,
-     B--D,
-     C--E,
-     D--E
-)
-g1
-plot(g1)
-```
-
-
-## NUTS2 regions: conectivity-based graphs
-
-```{r}
-library(dplyr)
-library(eurostat)
-library(giscoR)
-library(sf)
-library(spdep)
-library(mapview)
-
-
-map1 <- giscoR::gisco_get_nuts()
-## Contiguity rule (common border) 
-## Connectivity and Spatial weights matrices 
-## 
-#
-#
-Poland.sf <- map1 %>%   
-  dplyr::filter(LEVL_CODE == 2 & CNTR_CODE %in% "PL") %>% 
-  dplyr::select(NUTS_ID) 
-plot(Poland.sf, key.pos=1)
-#
-#
-# Centroids (only necessary to plot the neighborhood structure, NOT to calucate it)
-PL_centroids <- Poland.sf %>% 
-  st_geometry() %>% 
-  st_centroid()
-PL_centroids
-#
-# manually shift "centroid" of "Mazowiecki regionalny" from Warszaw
-# .. for visualization only, will not affect contiguity evaluation
-PL_centroids[17] <- st_point(c(21.08923, 53))
-#
-#
-# ?poly2nb # transforms polygons to nb, based on common borders
-PL_contig <- poly2nb(Poland.sf, snap = 0.03) # note the snap & queen arguments
-summary(PL_contig)
-PL_contig[[1]]
-#
-# dev.off()
-plot(Poland.sf, border = "black", reset = F)
-plot(PL_contig, PL_centroids, col = "black", add = T,cex=2,pch=16)
-
-
-#
-# Connectivity and weight matrices
-#
-C <- nb2mat(PL_contig, style="B") # nb to binary matrix of connectivity
-colnames(C) <- Poland.sf$NUTS_ID
-rownames(C) <- Poland.sf$NUTS_ID
-C
-#
-W <- nb2mat(PL_contig, style="W") # nb to row-standardized matrix of connectivity
-colnames(W) <- Poland.sf$NUTS_ID
-rownames(W) <- Poland.sf$NUTS_ID
-round(W,2)
-
-```
-
-
-
-#####  Euler and Hamilton 
-
-
-```{r}
-# install.packages("igraph")
-library(igraph)
-
-# ============================================================
-# Helper function
-# ============================================================
-
-plot_traversal <- function(g, layout, traversal_edges,
-                           main,
-                           subtitle,
-                           start_vertex = NULL,
-                           end_vertex = NULL,
-                           vertex_order = NULL) {
-  
-  # Default appearance
-  V(g)$color <- "#D9EAF7"
-  V(g)$frame.color <- "#253494"
-  V(g)$label.color <- "black"
-  V(g)$size <- 33
-  
-  E(g)$color <- "grey70"
-  E(g)$width <- 2
-  E(g)$label <- NA
-  E(g)$label.color <- "black"
-  E(g)$label.cex <- 1.4
-  
-  # Highlight the relevant traversal
-  E(g)[traversal_edges]$color <- "#D7301F"
-  E(g)[traversal_edges]$width <- 5
-  
-  # Number edges by traversal order
-  E(g)$label[traversal_edges] <- seq_along(traversal_edges)
-  
-  # Optional vertex visit order
-  if (!is.null(vertex_order)) {
-    V(g)$label <- paste0(
-      V(g)$name,
-      "\n(",
-      match(V(g)$name, vertex_order),
-      ")"
-    )
-  }
-  
-  # Highlight start and end
-  if (!is.null(start_vertex)) {
-    V(g)[start_vertex]$color <- "#66C2A5"
-  }
-  
-  if (!is.null(end_vertex)) {
-    V(g)[end_vertex]$color <- "#FDAE61"
-  }
-  
-  # If beginning and end are identical
-  if (!is.null(start_vertex) &&
-      !is.null(end_vertex) &&
-      start_vertex == end_vertex) {
-    
-    V(g)[start_vertex]$color <- "#FFD92F"
-  }
-  
-  plot(
-    g,
-    layout = layout,
-    main = main,
-    sub = subtitle,
-    vertex.label.cex = 1.05,
-    vertex.label.family = "sans",
-    vertex.label.font = 2,
-    edge.label.family = "sans",
-    edge.label.font = 2,
-    edge.label.bg = "white",
-    edge.curved = 0,
-    asp = 1,
-    margin = 0.12
-  )
-}
-
-
-# ============================================================
-# 1. EULER TRAIL, BUT NO EULER CIRCUIT
-#
-# Exactly two vertices, A and B, have odd degree.
-# The path traverses every EDGE exactly once.
-# ============================================================
-
-g_euler_trail <- graph_from_literal(
-  A--B, B--C, C--D, D--A,
-  A--C,
-  B--E, E--C
-)
-
-layout_euler_trail <- matrix(
-  c(
-    0, 1,    # A
-    2, 1,    # B
-    2, 0,    # C
-    0, 0,    # D
-    3, 0.5   # E
-  ),
-  ncol = 2,
-  byrow = TRUE,
-  dimnames = list(c("A", "B", "C", "D", "E"), NULL)
-)
-
-# Order coordinates according to the igraph vertex order
-layout_euler_trail <- layout_euler_trail[
-  V(g_euler_trail)$name, ,
-  drop = FALSE
-]
-
-stopifnot(has_eulerian_path(g_euler_trail))
-stopifnot(!has_eulerian_cycle(g_euler_trail))
-
-et <- eulerian_path(g_euler_trail)
-
-et_edges <- as.integer(et$epath)
-et_vertices <- V(g_euler_trail)$name[as.integer(et$vpath)]
-
-et_vertices
-degree(g_euler_trail)
-
-
-# ============================================================
-# 2. EULER CIRCUIT
-#
-# Two triangles share vertex A.
-# Every vertex has even degree.
-# ============================================================
-
-g_euler_circuit <- graph_from_literal(
-  A--B, B--C, C--A,
-  A--D, D--E, E--A
-)
-
-layout_euler_circuit <- matrix(
-  c(
-    0,  0,     # A
-    -2,  1,     # B
-    -2, -1,     # C
-    2,  1,     # D
-    2, -1      # E
-  ),
-  ncol = 2,
-  byrow = TRUE,
-  dimnames = list(c("A", "B", "C", "D", "E"), NULL)
-)
-
-layout_euler_circuit <- layout_euler_circuit[
-  V(g_euler_circuit)$name, ,
-  drop = FALSE
-]
-
-stopifnot(has_eulerian_path(g_euler_circuit))
-stopifnot(has_eulerian_cycle(g_euler_circuit))
-
-ec <- eulerian_cycle(g_euler_circuit)
-
-ec_edges <- as.integer(ec$epath)
-ec_vertices <- V(g_euler_circuit)$name[as.integer(ec$vpath)]
-
-ec_vertices
-degree(g_euler_circuit)
-
-
-# ============================================================
-# 3. HAMILTON PATH, BUT NO HAMILTON CYCLE
-#
-# A and F have degree 1, so neither can lie on a cycle.
-# The highlighted path visits every VERTEX exactly once.
-# ============================================================
-
-g_hamilton_path <- graph_from_literal(
-  A--B, B--C, C--D, D--E, E--F,
-  B--D, C--E
-)
-
-layout_hamilton_path <- matrix(
-  c(
-    0, 0,     # A
-    1, 1,     # B
-    2, 0,     # C
-    3, 1,     # D
-    4, 0,     # E
-    5, 1      # F
-  ),
-  ncol = 2,
-  byrow = TRUE,
-  dimnames = list(c("A", "B", "C", "D", "E", "F"), NULL)
-)
-
-layout_hamilton_path <- layout_hamilton_path[
-  V(g_hamilton_path)$name, ,
-  drop = FALSE
-]
-
-hp_vertices <- c("A", "B", "C", "D", "E", "F")
-
-hp_edges <- as.integer(
-  E(g_hamilton_path, path = hp_vertices)
-)
-
-# Check that all vertices occur exactly once
-stopifnot(
-  length(hp_vertices) == vcount(g_hamilton_path),
-  length(unique(hp_vertices)) == vcount(g_hamilton_path),
-  all(degree(g_hamilton_path)[c("A", "F")] == 1)
-)
-
-
-# ============================================================
-# 4. HAMILTON CYCLE
-#
-# The outer hexagon is a Hamilton cycle.
-# The three internal chords are deliberately not used.
-# ============================================================
-
-g_hamilton_cycle <- graph_from_literal(
-  A--B, B--C, C--D, D--E, E--F, F--A,
-  A--D, B--E, C--F
-)
-
-angle <- seq(
-  from = pi / 2,
-  by = -2 * pi / 6,
-  length.out = 6
-)
-
-layout_hamilton_cycle <- cbind(
-  cos(angle),
-  sin(angle)
-)
-
-rownames(layout_hamilton_cycle) <- LETTERS[1:6]
-
-layout_hamilton_cycle <- layout_hamilton_cycle[
-  V(g_hamilton_cycle)$name, ,
-  drop = FALSE
-]
-
-hc_vertices <- c("A", "B", "C", "D", "E", "F", "A")
-
-hc_edges <- as.integer(
-  E(g_hamilton_cycle, path = hc_vertices)
-)
-
-# Check: all vertices occur once before returning to A
-stopifnot(
-  length(unique(hc_vertices[-length(hc_vertices)])) ==
-    vcount(g_hamilton_cycle),
-  
-  hc_vertices[1] ==
-    hc_vertices[length(hc_vertices)]
-)
-
-
-# ============================================================
-# PLOT ALL FOUR GRAPHS
-# ============================================================
-
-
-
-plot_traversal(
-  g = g_euler_trail,
-  layout = layout_euler_trail,
-  traversal_edges = et_edges,
-  main = "Euler trail",
-  subtitle = "Every edge once; start and end differ",
-  start_vertex = et_vertices[1],
-  end_vertex = et_vertices[length(et_vertices)]
-)
-
-plot_traversal(
-  g = g_euler_circuit,
-  layout = layout_euler_circuit,
-  traversal_edges = ec_edges,
-  main = "Euler circuit",
-  subtitle = "Every edge once; returns to the start",
-  start_vertex = ec_vertices[1],
-  end_vertex = ec_vertices[length(ec_vertices)]
-)
-
-plot_traversal(
-  g = g_hamilton_path,
-  layout = layout_hamilton_path,
-  traversal_edges = hp_edges,
-  main = "Hamilton path",
-  subtitle = "Every vertex once; start and end differ",
-  start_vertex = hp_vertices[1],
-  end_vertex = hp_vertices[length(hp_vertices)],
-  vertex_order = hp_vertices
-)
-
-plot_traversal(
-  g = g_hamilton_cycle,
-  layout = layout_hamilton_cycle,
-  traversal_edges = hc_edges,
-  main = "Hamilton cycle",
-  subtitle = "Every vertex once; returns to the start",
-  start_vertex = hc_vertices[1],
-  end_vertex = hc_vertices[length(hc_vertices)],
-  vertex_order = hc_vertices[-length(hc_vertices)]
-)
-
-mtext(
-  "Red edges show the selected traversal; numbers indicate traversal order",
-  outer = TRUE,
-  side = 3,
-  line = 0,
-  font = 2,
-  cex = 1.15
-)
-
-```
-
-
-
-
