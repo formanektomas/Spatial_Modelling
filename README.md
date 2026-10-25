@@ -63,7 +63,8 @@ University of Economics, Prague
 
 #### Materials for Block 2  
 
-+ [Download presentation slides for Block 2](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block2/Block2.pdf)  
++ [Download presentation slides for Block 2](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block2/Block2.pdf)
++ [Download R scripts for Block 2 (zip)](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block2/R_lab/Block2.zip)  
 
 
 #### Case studies and applications   
