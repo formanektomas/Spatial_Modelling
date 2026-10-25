@@ -1,0 +1,264 @@
+---
+title: "Cycling in Salzburg"
+author: ""
+format: 
+  html:
+    toc: true
+    embed-resources: true
+---
+
+Adapted from examples on the web page [sfnetworks](https://github.com/luukvdmeer/sfnetworks/) by Lucas van der Meer.
+
+> In Salzburg, how many restaurants can we reach from a given venue (conference hall) withing 15 minutes, if travelling by bicycle (how does the results change, should we consider bicycle-friendly routes only)?
+
+**Outline of the steps of analysis:** 
+
+1. Obtain the centerlines of streets and the locations of restaurants in Salzburg from OpenStreetMap, using the [osmdata](https://github.com/ropensci/osmdata) package. Obtain locations of restaurants in Salzburg.
+    - to avoid multiple queries to the OSM database, and to avoid time-out errors, datasets are provided (`osmdata` query code is shown)
+
+2. Estimate a cycling travel time for each street segment. 
+
+3. Assign each street segment a cycling suitability level, describing how well it is designed for cycling. 
+
+4. Streets are then converted into a routable network structure with the [sfnetworks](https://github.com/luukvdmeer/sfnetworks/) package. 
+
+5. Finally, we compute a simple cumulative opportunities metric to quantify the accessibility of restaurants from the conference venue.
+
+
+```{r}
+# Load the packages (install if necessary)
+#| warning: false
+#| message: false
+library(sfnetworks)
+library(sf)
+library(tidygraph)
+library(tidyverse)
+library(osmdata)
+library(terra)
+library(units)
+```
+
+---  
+
+### 1. Get OpenStreetMap data
+
+In this step, we use the [osmdata](https://github.com/ropensci/osmdata) package to retrieve data from OpenStreetMap. 
+
+For repeated queries, it is preferrable to use OpenStreetMap extract (e.g., from [Geofabrik](https://download.geofabrik.de/)) and read the required data into `R` using the [osmextract](https://github.com/ropensci/osmextract) package.
+
+```{r}
+# Set up the origin of the analysis (venue) and its extent
+venue <- sf::st_sfc(sf::st_point(c(13.04205, 47.81415)), crs = 4326)
+area <-  sf::st_buffer(venue, units::set_units(3, "km"))
+```
+
+Query all streets within our area of interest from OpenStreetMap.  
+
+- Since some streets may be drawn as a closed polygon (like a square or a roundabout) we convert polygon borders into linestrings, before extracting only the linestrings from the API response. Finally, we cut streets at the edge of our area of interest and make sure all of them are single linestrings, meaning that the different parts of multi-linestrings will be seen as different street segments (note that to do this properly we first need to cast everything to multi-linestrings).
+
+```{r}
+#| warning: false
+# streets = osmdata::opq(sf::st_bbox(area)) |>
+#   osmdata::add_osm_feature(key = "highway") |>
+#   osmdata::osmdata_sf() |>
+#   osmdata::osm_poly2line() |>
+#   purrr::pluck("osm_lines") |>
+#   sf::st_intersection(area) |>
+#   sf::st_cast("MULTILINESTRING") |>
+#   sf::st_cast("LINESTRING")
+# 
+# to speed-up the script and to avoid time-out errors, we read the data directly
+streets <- st_read("data/streets.gpkg")
+```
+
+Query all restaurant locations within our area of interest. 
+
+```{r}
+#| warning: false
+# restaurants = osmdata::opq(sf::st_bbox(area)) |>
+#   osmdata::add_osm_feature(key = "amenity", value = "restaurant") |>
+#   osmdata::osmdata_sf() |>
+#   purrr::pluck("osm_points") |>
+#   sf::st_intersection(area)
+# to speed-up the script and to avoid time-out errors, we read the data directly
+restaurants <- st_read("data/restaurants.gpkg")
+```
+
+Plot the map, with venue and restaurants shown
+
+```{r}
+par(mar = c(0, 0, 0, 0))
+plot(sf::st_geometry(streets))
+plot(sf::st_geometry(venue), col = "red", pch = 20, cex = 2, add = TRUE)
+plot(sf::st_geometry(restaurants), col = "green", pch = 20, cex = 0.5, add = TRUE)
+```
+
+### 2. Estimate cycling travel times
+
+In this step, we estimate cycling travel times for each street segment.  
+
+ *CyclingTime = length / speed*
+
+```{r}
+# compute length
+streets$length = sf::st_length(streets) |>
+  units::set_units("km")
+# plot length of streets
+plot(dplyr::select(streets, length))
+```
+
+For the cycling speed, we define a default speed of 20 km/hour. Given the profile (gradient), we may be able to adjust the speed uphill and downhill, but we keep the calculations simple here. 
+
+```{r}
+streets$speed <- 20 |>
+  units::set_units("km/h")
+
+```
+
+Based on lengths and speeds, we can compute the estimated travel time of cyclists for each street segment, in minutes.
+
+```{r}
+streets$time <- units::set_units(streets$length / streets$speed, "min")
+plot(dplyr::select(streets, time))
+```
+
+### 3. Estimate cycling suitability
+
+Next, we assign each street segment a cycling suitability level.  
+
+- This should give an indication of how suitable the infrastructure is for cycling, in terms of safety and comfort.  
+- We define three different levels of cycling suitability based on the available cycling infrastructure and the street classification.  
+- Separated bike lanes form the highest level. Painted bike lanes, shared lanes, and residential streets form the intermediate level. Everything else becomes the lowest level.
+
+```{r}
+estimate_suitability <- function(hw, cw, cwl, cwr, cwb, bc, ...) {
+  lanes <- c("lane", "shared_lane", "share_busway")
+  if (hw %in% c("cycleway")) {
+    1
+  } else if (hw %in% c("residential", "living_street")) {
+    2
+  } else if (cw %in% lanes | cwl %in% lanes | cwr %in% lanes | cwb %in% lanes) {
+    2
+  } else if (hw %in% c("footway") & bc %in% c("yes", "designated")) {
+    2
+  } else {
+    3
+  }
+}
+
+# if you download the data from OSM, you may get "cycleway:left", etc.
+cols <- c(hw = "highway", cw = "cycleway", cwl = "cycleway.left",
+         cwr = "cycleway.right", cwb = "cycleway.both", bc = "bicycle")
+
+streets$level <- streets |>
+  sf::st_drop_geometry() |>
+  dplyr::select(any_of(cols)) |>
+  setNames(c("hw", "cw", "cwl", "cwr", "cwb", "bc")) |>
+  purrr::pmap_dbl(estimate_suitability) |>
+  factor(levels = c(1, 2, 3), labels = c("good", "medium", "low"))
+
+# plot the street classification
+plot(dplyr::select(streets, level),reset=FALSE)
+plot(sf::st_geometry(venue), col = "red", pch = 20, cex = 2, add = TRUE)
+```
+
+### 4. Construct a routable street network
+
+Convert the streets into a routable network structure.  
+
+- Note that we simply assume each street can be traveled in both directions, and the network is therefore undirected.
+
+```{r}
+network <- sfnetworks::as_sfnetwork(streets, directed = FALSE)
+# plot the network
+plot(network, cex = 0.5)
+```
+
+- Streets in OpenStreetMap are not always mapped with a network structure in mind.   
+- Connected street segments cross each other without sharing an endpoint.  
+- This results in many disconnected sets of streets in the network, as shown below. Even our small network has over 7000 disconnected components.
+
+```{r}
+tidygraph::with_graph(network, tidygraph::graph_component_count())
+
+node_count_all <- network |>
+  tidygraph::with_graph(tidygraph::graph_order())
+
+node_count_largest <- network |>
+  tidygraph::convert(tidygraph::to_largest_component) |>
+  tidygraph::with_graph(tidygraph::graph_order())
+
+round(node_count_largest / node_count_all * 100)
+```
+
+The [sfnetworks](https://github.com/luukvdmeer/sfnetworks/) package contains functions to pre-process and clean networks. One of them is `to_spatial_subdivision()`, which connects streets when they share internal vertices rather than only endpoints. This results in a network that still has some disconnected components (which is to be expected since we cut the network at the buffer boundaries), but with the largest of them containing almost all nodes.
+
+```{r}
+network <- network |>
+  tidygraph::convert(sfnetworks::to_spatial_subdivision)
+# plot the network
+plot(network, cex = 0.5)
+
+tidygraph::with_graph(network, tidygraph::graph_component_count())
+
+node_count_all <- network |>
+  tidygraph::with_graph(tidygraph::graph_order())
+
+node_count_largest <- network |>
+  tidygraph::convert(tidygraph::to_largest_component) |>
+  tidygraph::with_graph(tidygraph::graph_order())
+
+round(node_count_largest / node_count_all)
+```
+
+Now we can select the largest component without loosing a lot of data.
+
+```{r}
+network <- network |>
+  tidygraph::convert(tidygraph::to_largest_component)
+plot(network, cex = 0.5)
+```
+
+### 5. Compute accessibility to restaurants
+
+In this step, we compute a simple cumulative opportunities accessibility metric to find out how many restaurants can be reached from the conference venue within a given time threshold - 15 minutes. Also, we we only consider the first and second suitability levels (for cycling).
+
+Try all roads first:
+
+```{r}
+times <- network |>
+  sfnetworks::st_network_cost(venue, restaurants, weights = "time")
+
+access <- restaurants[which(times < units::set_units(15, "min")), ]
+
+nrow(access) # 287/458 restaurants accessible 
+
+```
+
+
+
+Consider the first and second suitability levels (for cycling)  
+- zero restaurant accessible within 15 minutes, 4 accessible within 20 minutes:
+
+```{r}
+suitable_network <- network |>
+  tidygraph::activate("edges") |>
+  dplyr::filter(level %in% c("medium", "good"))
+
+times <- suitable_network |>
+  sfnetworks::st_network_cost(venue, restaurants, weights = "time")
+
+access <- restaurants[which(times < units::set_units(20, "min")), ]
+
+access
+
+trimmed_suitable_network <- suitable_network |>
+  tidygraph::activate("nodes") |>
+  dplyr::filter(!tidygraph::node_is_isolated())
+
+par(mar = c(0, 0, 0, 0))
+plot(network, col = "grey", cex = 0.4)
+plot(trimmed_suitable_network, cex = 0.5, add = TRUE)
+plot(sf::st_geometry(venue), col = "red", pch = 20, cex = 2, add = TRUE)
+plot(sf::st_geometry(access), col = "green", pch = 20, add = TRUE)
+```
