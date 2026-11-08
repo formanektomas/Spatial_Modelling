@@ -84,8 +84,12 @@ University of Economics, Prague
 + Spatial clustering, local indicators of spatial association (LISA)  
 + Spatial interpolation, krigging
 
-**Case studies and applications**  
-+ [Lake Rangsdorf](https://www.geo.fu-berlin.de/en/v/soga-py/Advanced-statistics/Spatial-Interpolation/Data-sets-used/Lake-Rangsdorf/index.html)
+
+#### Materials for Block 2  
+
++ [Download presentation slides for Block 3](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block3/Block3.pdf)
++ [Download R scripts for Block 3 (zip)](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block3/R_lab/Block3.zip)  
+
 
 --- 
 
