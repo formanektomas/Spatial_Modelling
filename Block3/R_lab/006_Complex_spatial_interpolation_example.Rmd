@@ -1,0 +1,230 @@
+---
+title: "Spatial interpolation example"
+output: html_document
+---
+
+
+---
+
+## Description and motivation
+
+**Lake Rangsdorf - bathymetry**
+
+* Using multiple depth measurements obtained for Lake Rangsdorf, we apply IDW to estimate bathymetric profile (lake floor depth profile).  
+* To show the process of combining data from different sources: checking data quality, merging datasets, filtering `sf` objects.  
+* Plotting the results.  
+
+
+*General description of the Rangsdorf lake and its location:*  
+
+* Lake Rangsdorf is located at the southern margin of the Teltow Plateau and a former proglacial drainage system, the Rangsdorf-Thyrow-Abflussbahn. Its basin has originally emerged as part of a subglacial drainage system, still visible at the panhandle Krumme Lanke and its northern continuation–the Glasow-Bach valley, whereas the main basin has been designed as a kettle hole. The northern part of Krumme Lanke still exhibits its basin shape as a glacial tunnel lake (max. lake depth 9 m with and average depth of roughly 3.5 m), where the southern main lake shows the typical morphology of a kettle lake silting up to an average depth of approx. 0.9 m (max. 2.7 m). As most of the other shallow lakes in Brandenburg, lake Rangsdorf is an eutrophic to hypertrophic lake suffering from heavy algae blooms in summer season.
+
+
+
+```{r, echo=FALSE,message=FALSE,include=FALSE}
+library(terra)
+library(gstat)
+library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
+library(sf)
+library(dplyr)
+library(plotly)
+```
+
+--- 
+
+## First, we read-in the three datasets
+
+* **The first dataset is a map of the lake (shore-line):**
+
+```{r,message=FALSE}
+shoreline <- st_read('data/lake.gpkg')
+str(shoreline)
+st_crs(shoreline)$epsg # https://epsg.io/32633 coords in meters, dist. from "centerpoint"
+plot(shoreline[,1])
+```
+
+
+* **Second dataset is a series of geo-coded sonar depth measurements**
+
+```{r}
+sonar <- st_read('data/sonar.gpkg')
+str(sonar)
+plot(sonar[,1])
+```
+
+
+* **Third dataset comes from geo-coded sediment-sampling records**
+
+```{r}
+sediments <- read.csv("data/Sediments.csv")
+str(sediments)
+#
+sediments <- st_as_sf(sediments,
+                      coords = c('x', 'y'), 
+                      crs = 32633,
+                      sf_column_name="geom") # to match remaining datasets
+plot(sediments[,"depth_m"])
+```
+
+--- 
+
+## Data visualization 
+
+* Using the `{mapview}` package, the three datasets can be visualized on a map:
+
+```{r}
+mapview(shoreline, color = "red", highlight = F, label = 'Shoreline') + 
+  mapview(sonar, color = 'black', highlight = F, label = 'Sonar', cex = 1) + 
+  mapview(sediments, label = 'Sediment \ndata', cex = 4)
+
+# Alternative, sf-based visualization
+plot(st_geometry(shoreline), col = "lightblue", main = "Shoreline")
+plot(st_geometry(sonar), add = TRUE, pch = 16, cex = 0.25, col = "black")
+plot(st_geometry(sediments), add = TRUE, pch = 16, cex = 0.8, col = "red")
+legend(
+  "bottomleft",
+  legend = c("shoreline", "sonar", "sediments"),
+  col = c("lightblue", "black", "red"),
+  pch = c(15, 16, 16),
+  bty = "n")
+
+```
+
+
+---- 
+
+## Bathymetric profile: step-by-step analysis
+
+#### (1) Extract shoreline data features
+
+Note that `shoreline` object is a single polygon (line along the shore). However, you can safely assume that the depth at shore is zero and use the data for interpolation (zero-depth at shore assumption holds for our lake, not in general).  
+
+```{r shoreline}
+# cast polygon to line and create point 30 m apart (approx.)
+shoreline_line <- st_cast(st_boundary(shoreline), "LINESTRING")
+st_length(shoreline_line)
+
+shoreline_points <- st_line_sample(shoreline_line, density = 1 / 30) |> 
+  # density (points per distance unit) 
+  st_cast("POINT") |>
+  st_as_sf() |>
+  st_set_crs(st_crs(shoreline)) |>
+  mutate(depth_m = 0)
+```
+
+#### (2) Basic data cleaning and verfication
+
+Are all geocodings compatible (EPSG-codes identical)? Are all measurements valid (say, "inside" the lake polygon)? Are there any NA depth measurements? Are there any sonar-based zero measurements? While shoreline zero-depth is OK, sonar-based zero measurements are errors (based on additional device-related information).
+
+```{r verify}
+# CRS settings are OK in this example
+
+# data inside polygon
+sonar_in <- st_filter(sonar, shoreline)
+sediments_in <- st_filter(sediments, shoreline)
+
+# remove errors from data
+sonar_clean <- sonar_in |>
+  filter(!is.na(depth_m), depth_m > 0)
+
+sediments_clean <- sediments_in |>
+  filter(!is.na(depth_m), depth_m >= 0)
+
+# fix geometry names
+st_geometry(shoreline_points) <- "geometry"
+st_geometry(sonar_clean) <- "geometry"
+st_geometry(sediments_clean) <- "geometry"
+
+# join the datasets
+# combine datasets
+bathymetry_pts <- shoreline_points %>% 
+  dplyr::select(depth_m) %>% 
+  rbind(sonar_clean[,"depth_m"]) %>% 
+  rbind(sediments_clean[,"depth_m"])
+
+# depth as negative numbers
+bathymetry_pts$depth_m <- bathymetry_pts$depth_m*-1
+```
+
+
+#### (3) Descriptive statistics
+
+
+```{r geostatistics, warning=FALSE}
+# summary
+summary(bathymetry_pts$depth_m)
+
+# semivariogram
+emp_variogram <- variogram(depth_m ~ 1, bathymetry_pts)
+vgm_model <- fit.variogram(emp_variogram,
+                           model = vgm(psill = 2, model = "Sph", 
+                                       range = 600, nugget = 0.1))
+plot(emp_variogram,vgm_model)
+```
+
+
+
+#### (4) Generate a target object for interpolation
+
+```{r grid}
+bbox <- st_bbox(shoreline)
+bbox_sf <- st_as_sfc(bbox)
+
+grid <- st_make_grid(bbox_sf, cellsize = 20, what = "centers") |>
+  st_as_sf()
+
+grid <- st_filter(grid, shoreline)
+grid$depth_m <- NA_real_
+
+plot(st_geometry(shoreline), col = "lightblue", main = "Interpolation grid")
+plot(st_geometry(grid), add = TRUE, pch = 16, cex = 0.25, col = "darkgreen")
+```
+
+
+
+#### (5) IDW
+
+
+```{r idw}
+idw_model <- gstat(formula = depth_m ~ 1, locations = bathymetry_pts, 
+                   set = list(idp = 2))
+idw_result <- predict(idw_model, newdata = grid)
+
+plot(idw_result["var1.pred"], main = "IDW interpolation - 2D")
+plot(st_geometry(shoreline), add = TRUE)
+
+# 3D plot using terra-based raster
+idw_vect <- terra::vect(idw_result)
+idw_r_template <- terra::rast(idw_vect, res = 25)
+idw_raster <- terra::rasterize(idw_vect, idw_r_template, field = "var1.pred")
+plot(idw_raster, main = "IDW raster")
+lines(vect(shoreline), col = "black")
+
+idw_matrix <- rayshader::raster_to_matrix(idw_raster)
+idw_matrix_plot <- idw_matrix
+idw_matrix_plot[is.na(idw_matrix_plot)] <- 0
+
+plot_ly(
+  type = "surface",
+  z = idw_matrix_plot,
+  contours = list(
+    z = list(show = TRUE, size = 1, color = "white")
+  )
+) |>
+  layout(
+    title = "IDW - 3D bathymetry",
+    scene = list(
+      zaxis = list(title = "Depth [m]"),
+      xaxis = list(title = "X"),
+      yaxis = list(title = "Y"),
+      camera = list(eye = list(x = 1.2, y = -1.2, z = 0.7)),
+      aspectratio = list(x = 1, y = 1, z = 0.3)
+    )
+  )
+```
+
+
+---
+
+*Example amended from: Hartmann, K., Krois, J., Waske, B. (2018): E-Learning Project SOGA: Statistics and Geospatial Data Analysis. Department of Earth Sciences, Freie Universitaet Berlin.*

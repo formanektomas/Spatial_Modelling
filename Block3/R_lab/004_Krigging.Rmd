@@ -1,0 +1,184 @@
+---
+title: "Krigging & IDW example - Meuse river sediments"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sp)
+library(sf)
+library(gstat)
+library(dplyr)
+library(ggplot2)
+library(scales) # for "comma"
+library(magrittr)
+data(meuse)
+data(meuse.grid)
+```
+
+* We shall be predicting zinc-sediment levels.  
+
+* Example is based on the Meuse dataset.  
+
+```{r}
+glimpse(meuse)
+glimpse(meuse.grid) # empty grid - zinc levels will be predicted here
+```
+
+* We can use `ggplot2` to visually inspect how zinc varies over the domain of interest where we map concentration to point size:
+
+```{r}
+meuse %>% 
+  as.data.frame %>% 
+  ggplot(aes(x, y)) + geom_point(aes(size=zinc), color="red", alpha=3/4) + 
+    ggtitle("Zinc Concentration (ppm)") + coord_equal() + theme_bw()
+```
+
+
+----
+
+* Prepare data for spatial analysis (IDW, krigging) by making the DF *spatially aware*:
+
+
+```{r, warning=F}
+meuse <- meuse %>%
+  st_as_sf(coords = c("x", "y"),crs = 28992,remove=FALSE) # keep the x,y columns
+
+meuse.grid <- meuse.grid %>%
+  st_as_sf(coords = c("x", "y"),crs = 28992,remove=FALSE)
+```
+
+----
+
+## IDW
+
+```{r, warning=F}
+idwmodel <- idw(log(zinc) ~1, meuse,meuse.grid,
+               maxdist = Inf, idp = 1) 
+head(idwmodel) # show interpolated values (note absence of variances of interpolated values)
+idwmodel %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.pred)) + coord_equal() +
+    scale_fill_gradient(low = "yellow2", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+```
+
+* IDV with high `idp` argument produces "tiles" (Voronoi-type)
+
+```{r, warning=F}
+idwmodel2 <- idw(log(zinc) ~1, meuse,meuse.grid,
+               maxdist = Inf, idp = 20) 
+idwmodel2 %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.pred)) + coord_equal() +
+    scale_fill_gradient(low = "yellow2", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+```
+
+----
+
+## Krigging (ordinary krigging)
+
+
+1. Calculate the sample variogram. This is done with the `variogram()` function.  
+
+2. Fit a model to the sample variogram using `fit.variogram()` function  
+
+3. Use the fitted variogram for krigging ($\lambda_i$) weights, using `krige()` function  
+
+4. Plot the krigged data using `ggplot()`  
+
+
+```{r, warning=F, message=F}
+# 1
+SV <- variogram(log(zinc)~1, meuse) # calculates sample variogram values 
+# 2 
+lzn.fit <- fit.variogram(SV, vgm("Sph"))
+# 3
+lzn.kriged <- krige(log(zinc) ~ 1, meuse, meuse.grid, model=lzn.fit)
+head(lzn.kriged) # show krigged values and the variances of predictions
+# 4
+lzn.kriged %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.pred)) + coord_equal() +
+    scale_fill_gradient(low = "yellow2", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+
+# show variance of the fitted (krigged) values
+lzn.kriged %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.var)) + coord_equal() +
+    scale_fill_gradient(low = "white", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+```
+
+
+## Universal krigging
+
+- Universal kriging, more specifically kriging with an external drift, is used next because `dist` is included as a predictor of the spatial trend.  
+- The variogram and kriging formulas should describe the same mean structure.  
+- Conceptually, the model now is:
+
+$$\log(\textit{zinc}(\pmb{s})) = \beta_0 + \beta_1 \textit{dist}(\pmb{s}) + \varepsilon(\pmb{s}),$$
+
+where `dist` explains the deterministic trend and the spatially correlated residual $\varepsilon(\pmb{s})$ is handled through the semivariogram.
+
+```{r, warning=F, message=F}
+# 1
+SV2 <- variogram(log(zinc)~dist, meuse) # calculates sample variogram values 
+# 2 
+lzn.fit2 <- fit.variogram(SV2, vgm("Sph"))
+# 3
+lzn.kriged2 <- krige(log(zinc) ~ dist, meuse, meuse.grid, model=lzn.fit2)
+head(lzn.kriged2) # show krigged values and the variances of predictions
+# 4
+lzn.kriged2 %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.pred)) + coord_equal() +
+    scale_fill_gradient(low = "yellow2", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+
+# show variance of the fitted (krigged) values
+lzn.kriged2 %>% 
+  mutate(
+    x = st_coordinates(.)[, 1],
+    y = st_coordinates(.)[, 2]) %>% 
+  as.data.frame %>%
+  ggplot(aes(x=x, y=y)) + geom_tile(aes(fill=var1.var)) + coord_equal() +
+    scale_fill_gradient(low = "white", high="red") +
+    scale_x_continuous(labels=comma) + scale_y_continuous(labels=comma) +
+    theme_bw()
+
+
+# compare estimated variance for the two krigging-based predictions:
+
+# Ordinary krigging
+summary(lzn.kriged$var1.var)
+
+# Universal krigging
+summary(lzn.kriged2$var1.var)
+
+```
+
+
+----- 

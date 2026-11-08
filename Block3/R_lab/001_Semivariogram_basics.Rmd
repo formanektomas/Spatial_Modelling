@@ -1,0 +1,248 @@
+---
+title: "Semivariogram example - Meuse river sediments"
+output: 
+ html_document:
+  number_sections: false
+  toc: true
+  toc_float: 
+   collapsed: true
+   smooth_scroll: true
+  toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sp)
+library(sf)
+library(gstat)
+library(mapview)
+mapview::mapviewOptions(basemaps = "OpenStreetMap")
+data(meuse)
+```
+
+---
+
+> **Outline of the exercise**  
+> 1) Brief discussion of the legacy `{sp}` package and data formats  
+> 2) semivariogram calculation  
+
+
+## Meuse dataset
+
++ This illustration uses the Meuse dataset included in `{gstat}` package. The dataset provides measurements of four heavy metals measured in the top soil in a flood plain along the river Meuse.  
+
++ Apparently, polluted sediment is carried by the river and mostly deposited close to the river bank.  
+
++ Heavy metal concentrations are from composite samples of an area of approximately 15 m x 15 m (i.e. each *point* on a map represents a 15m by 15m square).  
+
+```{r}
+str(meuse)
+```
+
+
+* *x* is a numeric vector; Easting (m) in Rijksdriehoek (RDH) (Netherlands topographical) map coordinates. EPSG:28991 - Geprojecteerd coördinatensysteem Amersfoort / RD Old in meters.  
+* *y* is a numeric vector; Northing (m) in RDH coordinates.  
+* *cadmium* topsoil cadmium concentration, mg kg-1 soil ("ppm"); zero cadmium values in the original data set have been shifted to 0.2 (half the lowest non-zero value) to allow for log-transformation.    
+* *copper*, *lead*, etc. by analogy.  
+* *dist* distance to the Meuse river; obtained from the nearest cell in meuse.grid.  
+ 
+
+```{r}
+# Total area sampled and plotted (in meters)
+max(meuse$x) - min(meuse$x)
+max(meuse$y) - min(meuse$y)
+```
+
+--- 
+
+## Coordinates
+
+* The data frame above is not *spatially aware*.
+
+* Function `st_as_sf()` promotes the data frame `meuse` into a sf data frame, which knows about its spatial coordinates.
+
+```{r, warning=F}
+meuse_sf <- meuse %>%
+  st_as_sf(
+    coords = c("x", "y"),
+    crs = 28992)
+
+class(meuse_sf)
+head(meuse_sf)
+```
+
+---   
+
+## `sp` legacy format
+
++ Most packages used for spatial statistics and spatial econometrics now use **sf** format, not the legacy **sp** `SpatialPointsDataFrame` format.  
+
++ If necessary, the two spatial data formats can be "translated" back and forth:
+
+
+```{r, warning=F}
+# sf --> sp objects
+meuse_sp <- sf::as_Spatial(meuse_sf)
+class(meuse_sp)
+str(meuse_sp)
+# sp --> sf objects
+meuse_sf <- sf::st_as_sf(meuse_sp)
+class(meuse_sf)
+head(meuse_sf)
+
+```
+
+---
+
+## Plotting
+
+**The remaining part of the example is based on `sf` data.**
+
+
+```{r}
+# Choropleth-style point map colored by zinc concentration
+plot(
+  meuse_sf["zinc"],
+  main = "Zinc concentrations (ppm)",
+  pch = 20,
+  cex = 1.5)
+
+# Bubble map with point size proportional to zinc concentration
+plot(
+  st_geometry(meuse_sf),
+  pch = 21,
+  bg = "#00ff0088",
+  col = "darkgreen",
+  cex = sqrt(meuse_sf$zinc) / 10,
+  main = "Zinc concentrations (ppm)")
+
+# Alternatively, we can use ggplot:
+ggplot(meuse_sf) +
+  geom_sf(
+    aes(colour = zinc),
+    size = 2
+  ) +
+  scale_colour_viridis_c(
+    name = "Zinc (ppm)"
+  ) +
+  labs(
+    title = "Zinc concentrations (ppm)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank()
+  )
+
+ggplot(meuse_sf) +
+  geom_sf(
+    aes(size = zinc),
+    shape = 21,
+    fill = "#00ff0088",
+    colour = "darkgreen"
+  ) +
+  scale_size_area(
+    max_size = 12,
+    name = "Zinc (ppm)"
+  ) +
+  labs(
+    title = "Zinc concentrations (ppm)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank()
+  )
+
+
+# use mapview to show on a map
+meuse_sf %>% 
+  st_transform(4326) %>% 
+  mapview(zcol = "zinc",cex = 6,layer.name = "Zinc concentration (ppm)")
+```
+
+
+---- 
+
+## Semivariogram
+
+Semivariogram is produced in a two-step approach:
+
+1. Calculate the sample variogram. This is done with the `variogram()` function.
+
+2. Fit a model to the sample variogram using `fit.variogram()` function
+
+The `variogram()` function takes two arguments: the first denotes how one or more variables interact spatially, and the second is an SPDF where those variables reside. 
+
+* In our example, we assume that there is a constant mean (no spatial trend) for the variable `log(zinc)` 
+    * if concentration is assumed linear with respect to distance from river, we can use `log(zinc)~1+dist.m` 
+
+
+```{r}
+
+SV <- variogram(log(zinc)~1, meuse_sf) # calculates sample variogram values 
+SV # 15 groups, # obs per group, repr. distance, gamma, isotropy assumed
+plot(SV) # plot the empirical semivariogram
+```
+
+
+For the `fit.variogram()` function, a sample variogram is the first argument. The second is the model (functional form, parameter settings) to be fit to the sample variogram. 
+
+* For a list of all possible variograms that can be used, call `?gstat::vgm`, and to see graphical properties/characteristics of these models, call  `?gstat::show.vgms`.
+
+
+```{r}
+lzn.fit <- fit.variogram(SV, vgm("Sph")) # fit model
+#
+# psill = Partial sill = Sill - Nugget (initiall value for fitting psill)
+# "Sph" - fit to spherical "model"/curve
+# range	- range parameter of the variogram model component
+# nugget=1 - basically, adds nugget to model; if missing, nugget is omitted
+# 
+lzn.fit
+plot(SV, lzn.fit) # plot the fitted variogram and the observed variogram on the same graph
+```
+
+----- 
+
+**Fitted semivariograms depend on assumptions/settings used:**
+
+**Gaussian** semivariance wrt distance:
+
+```{r}
+lzn.gau <- fit.variogram(SV, vgm("Gau")) # fit model
+lzn.gau
+plot(SV, lzn.gau) 
+```
+
+**Exponential** semivariance wrt distance:
+
+```{r}
+lzn.exp <- fit.variogram(SV, vgm("Exp")) # fit model
+lzn.exp
+plot(SV, lzn.exp) 
+```
+
+We can use the `fit.variogram()` function to select the *best* function for variogram fitting:
+
+```{r}
+lzn.select <- fit.variogram(SV, vgm(c("Exp","Sph","Gau","Mat"))) # fit model
+lzn.select
+plot(SV, lzn.select) 
+```
+
+
+------ 
+
+**Directional (anisotropic)** semivariance wrt distance:
+
+```{r}
+vgm3.dir <- variogram(log(zinc)~1+dist.m, meuse_sf, alpha = c(0, 45, 90, 135))
+vgm3.fit.d <- fit.variogram(vgm3.dir, model = vgm(.59, "Sph", 1200, .05, anis = c(45, .4)))
+vgm3.fit.d
+plot(vgm3.dir, vgm3.fit.d, as.table = T)
+```
+
+
+------
+
+For spatio-temporal semivariogram, see e.g. [tutorial here](http://r-video-tutorial.blogspot.com/2015/08/spatio-temporal-kriging-in-r.html)
