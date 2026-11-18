@@ -54,7 +54,7 @@ Průběžný test 3, rozdělení bodů: 4 body Blok 2 (grafy) , 6 bodu Blok 3 (g
 - Prezentace, Blok 2, do slidu č. 53 (jen základní témata)  
 - [Spatial networks in R with sf and tidygraph](https://r-spatial.org/r/2019/09/26/spatial-networks.html){:target="_blank"}    </br> </br>
 
-- Prezentace, Blok 3, do slidu č. 47  
+- Prezentace, Blok 3
 - [Spatial semivariograms](https://rpubs.com/bpbond/1206397){:target="_blank"}    
 - [Spatial neighborhood matrices](https://www.paulamoraga.com/book-spatial/spatial-neighborhood-matrices.html){:target="_blank"}    
 
