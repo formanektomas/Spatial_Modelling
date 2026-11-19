@@ -85,7 +85,7 @@ University of Economics, Prague
 + Spatial interpolation, krigging
 
 
-#### Materials for Block 2  
+#### Materials for Block 3  
 
 + [Download presentation slides for Block 3](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block3/Block3.pdf)
 + [Download R scripts for Block 3 (zip)](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block3/R_lab/Block3.zip)  
@@ -95,24 +95,34 @@ University of Economics, Prague
 
 ### Block 4: Spatial regression models  
 
-**Models for cross-sectional data**  
-+ Spatial regression models: taxonomy, marginal effects, diagnostics (stability with respect to spatial structure/adjacency)  
-+ Local regression on spatial data: geographically weighted regression models (GWR)  
-+ Spatial filter: Moran's eigenvector maps in spatial econometrics   
-    + [https://ruettenauer.github.io/SICSS-Spatial/SICSS-spatial_part2.html#Spatial_Regression_Models](https://ruettenauer.github.io/SICSS-Spatial/SICSS-spatial_part2.html#Spatial_Regression_Models){:target="_blank"}
-+ Spatial regression models for limited dependent variables 
++ Models for cross-sectional spatial data (taxonomy, marginal effects, diagnostics)  
++ Semi-parametric spatial models for CS data: Moran's eigenvector maps in spatial econometrics, geographically weighted regression (GWR)  
++ Spatial regression models for limited dependent variables  
++ Case studies  
+</br> </br>
++ Models for spatio-temporal (panel) data  (static, dynamic)  
 
-**Models for spatio-temporal (panel) data**  
-+ Static panel data models
-+ Dynamic panel data models
-    + [https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html){:target="_blank"}
 
-**Case studies and applications**  
-+ [https://rpubs.com/quarcs-lab/tutorial-gwr1](https://rpubs.com/quarcs-lab/tutorial-gwr1){:target="_blank"}  
+#### Case studies and applications   
+
++ [https://ruettenauer.github.io/SICSS-Spatial/SICSS-spatial_part2.html#Spatial_Regression_Models](https://ruettenauer.github.io/SICSS-Spatial/SICSS-spatial_part2.html#Spatial_Regression_Models){:target="_blank"}  
++ [https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html](https://ruettenauer.github.io/Geodata_Spatial_Regression/09_spatiotemporal.html){:target="_blank"}  
++ [https://rpubs.com/quarcs-lab/tutorial-gwr1](https://rpubs.com/quarcs-lab/tutorial-gwr1){:target="_blank"}   
+
+
+#### Materials for Block 4  
+
++ [Download presentation slides for Block 4](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block4/Block4.pdf)  
++ 
+
 
 --- 
 
-### Block 5: Case studies and applications  
+### Block 5: Point pattern analysis 
+
+--- 
+
+### Block 6: Case studies and applications  
 
 + [Transportation](https://r.geocompx.org/transport){:target="_blank"}
 + [Geomarketing](https://r.geocompx.org/location){:target="_blank"}
