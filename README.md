@@ -99,7 +99,7 @@ University of Economics, Prague
 + Semi-parametric spatial models for CS data: Moran's eigenvector maps in spatial econometrics, geographically weighted regression (GWR)  
 + Spatial regression models for limited dependent variables  
 + Case studies  
-</br> </br>
+
 + Models for spatio-temporal (panel) data  (static, dynamic)  
 
 
@@ -113,7 +113,7 @@ University of Economics, Prague
 #### Materials for Block 4  
 
 + [Download presentation slides for Block 4](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block4/Block4.pdf)  
-+ 
++ [Download R scripts for Block 4 (zip) - part 1 /30.11./](https://github.com/formanektomas/Spatial_Modelling/raw/main/Block4/R_lab/Block4.zip)  
 
 
 --- 
